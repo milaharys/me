@@ -273,11 +273,6 @@ async function buildBrandFromSeal(sealPath, site) {
   let off = head.length;
   sizes.forEach((n, i) => { const e = 6 + 16 * i; head.writeUInt8(n, e); head.writeUInt8(n, e + 1); head.writeUInt8(0, e + 2); head.writeUInt8(0, e + 3); head.writeUInt16LE(1, e + 4); head.writeUInt16LE(32, e + 6); head.writeUInt32LE(pngs[i].length, e + 8); head.writeUInt32LE(off, e + 12); off += pngs[i].length; });
   await writeFile(join(PUB, 'favicon.ico'), Buffer.concat([head, ...pngs]));
-  // files to upload by hand into Tilda: site settings → favicon / icons
-  const outDir = join(ROOT, 'tilda', 'icons'); await mkdir(outDir, { recursive: true });
-  await writeFile(join(outDir, 'favicon.ico'), Buffer.concat([head, ...pngs]));
-  for (const n of [152, 180, 270, 512]) await writeFile(join(outDir, `icon-${n}.png`), await sq(n));
-  for (const n of [152, 180]) await sharp({ create: { width: n, height: n, channels: 3, background: '#FFFFFF' } }).composite([{ input: await sq(Math.round(n * 0.84)), gravity: 'centre' }]).png().toFile(join(outDir, `icon-${n}-paper.png`));
   await sharp({ create: { width: 180, height: 180, channels: 3, background: '#FFFFFF' } })
     .composite([{ input: await sharp(cut).resize(150, 150).png().toBuffer(), left: 15, top: 15 }]).png().toFile(join(PUB, 'apple-touch-icon.png'));
   const W = 1200, H = 630, S = 470;
