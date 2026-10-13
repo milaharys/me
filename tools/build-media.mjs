@@ -56,6 +56,7 @@ export function titleFromFolder(name) {
 const MARK = /[!！❗❕‼⁉]️?/g;
 const marked = name => { MARK.lastIndex = 0; return MARK.test(name); };
 function clean(name, isFile) {
+  if (!marked(name)) return name;   // unmarked names stay byte for byte: they are the keys in meta.json
   const s = name.replace(MARK, ''), ext = isFile ? extname(s) : '';
   const base = (ext ? s.slice(0, -ext.length) : s).replace(/\s+/g, ' ').trim();
   return (base || 'untitled') + ext;
@@ -87,7 +88,7 @@ async function pmap(list, n, fn) {
 
 // ---------- scan ----------
 async function scan() {
-  const projects = []; const report = { empty: [], dupes: [], small: [], nested: [] };
+  const projects = []; const report = { empty: [], dupes: [], small: [], nested: [], skipped: [] };
   const isMedia = n => IMG_EXT.has(extname(n).toLowerCase()) || VID_EXT.has(extname(n).toLowerCase());
   const byClean = isFile => (a, b) => natural(clean(a.name, isFile), clean(b.name, isFile));   // a "!" never moves a shoot or a frame
   const cats = (await readdir(SRC, { withFileTypes: true })).filter(d => d.isDirectory() && !d.name.startsWith('.')).sort(byClean(false));
@@ -98,7 +99,7 @@ async function scan() {
       if (ent.isDirectory()) {
         const dir = join(SRC, catEnt.name, ent.name), folder = clean(ent.name, false);
         const inside = (await readdir(dir, { withFileTypes: true })).filter(d => !d.name.startsWith('.'));
-        for (const d of inside) if (d.isDirectory()) report.nested.push(`${cat}/${folder}/${d.name}`);
+        for (const d of inside) if (d.isDirectory()) report.nested.push(`${cat}/${folder}/${d.name}`); else if (!isMedia(clean(d.name, true))) report.skipped.push(`${cat}/${folder}/${d.name}`);
         const files = inside.filter(d => !d.isDirectory() && isMedia(clean(d.name, true))).sort(byClean(true))
           .map(d => { const name = clean(d.name, true); return { name, path: join(dir, d.name), key: `${cat}/${folder}/${name}`, mark: marked(d.name) }; });
         if (!files.length) { report.empty.push(`${cat}/${folder}`); continue; }
@@ -107,7 +108,7 @@ async function scan() {
         projects.push({ category: cat, folder, key: `${cat}/${folder}`, title: titleFromFolder(folder), files });
       } else if (ent.isFile()) {
         const name = clean(ent.name, true);
-        if (!isMedia(name)) continue;
+        if (!isMedia(name)) { report.skipped.push(`${cat}/${ent.name}`); continue; }
         const base = name.slice(0, -extname(name).length);
         projects.push({ category: cat, folder: name, key: `${cat}/${name}`, title: titleFromFolder(base), files: [{ name, path: join(SRC, catEnt.name, ent.name), key: `${cat}/${name}`, showcase: marked(ent.name) }] });
       }
@@ -405,6 +406,14 @@ async function main() {
   const stats = { rail: 0, full: 0, poster: 0, small: 0, railPhotoN: 0, railPhotoBytes: 0 };
   const manifest = { generated: new Date().toISOString(), site, projects: [], items: [] };
 
+  // a "!" must not orphan a shoot's title, link, year: a key missing from meta.json takes the entry that differs only in spaces
+  const tidyKey = k => k.split('/').map(s => s.replace(/\s+/g, ' ').trim().replace(/ (\.[^.]+)$/, '$1')).join('/');
+  const known = new Map([...Object.keys(meta.projects), ...Object.keys(meta.items)].map(k => [tidyKey(k), k]));
+  for (const p of projects) {
+    if (!(p.key in meta.projects)) p.key = known.get(tidyKey(p.key)) ?? p.key;
+    for (const it of p.items) if (!(it.key in meta.items)) it.key = known.get(tidyKey(it.key)) ?? it.key;
+  }
+
   // meta scaffolds (never overwrite existing entries)
   for (const p of projects) {
     meta.projects[p.key] ??= { title: p.title, credits: '', link: '', order: null, railCount: null };
@@ -545,6 +554,7 @@ async function main() {
   console.log(`home strip (!): model ${results.filter(e => e.showcase && e.role === 'model').length}, styling ${results.filter(e => e.showcase && e.role === 'styling').length}`);
   console.log(`tiers: small ${fmtMB(stats.small)}, rail ${fmtMB(stats.rail)} (photo avg ${fmtKB(avgRail)}), full ${fmtMB(stats.full)}, poster ${fmtMB(stats.poster)}`);
   if (report.empty.length) console.log(`empty folders (skipped): ${report.empty.join('; ')}`);
+  if (report.skipped.length) console.log(`not photo or video (skipped):\n  ${report.skipped.join('\n  ')}`);
   if (report.nested.length) console.log(`folders inside a shoot (skipped):\n  ${report.nested.join('\n  ')}`);
   if (report.dupes.length) console.log(`duplicates (skipped):\n  ${report.dupes.join('\n  ')}`);
   if (report.small.length) console.log(`sources below 1600px (HQ will be soft):\n  ${report.small.join('\n  ')}`);
