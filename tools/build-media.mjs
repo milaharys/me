@@ -49,6 +49,12 @@ export function slugify(s) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '') || 'untitled';
 }
+// "Nasty 24", "Nasty '24", "Nasty (2024)": a trailing year names the series and dates it
+const YEAR_TAIL = /^(.*?\S)[\s_'’.\-–—(]+(?:20)?([123]\d)\)?$/;
+export function splitYear(name) {
+  const m = name.trim().match(YEAR_TAIL);
+  return m ? { base: m[1].replace(/[\s_\-–—,]+$/, ''), year: '20' + m[2] } : { base: name, year: '' };
+}
 export function titleFromFolder(name) {
   return name.trim().replace(/_([^_]+)_/g, '“$1”').replace(/\s+/g, ' ');
 }
@@ -105,12 +111,13 @@ async function scan() {
         if (!files.length) { report.empty.push(`${cat}/${folder}`); continue; }
         const own = files.some(f => f.mark);   // a marked shoot with marked files inside shows only those files
         for (const f of files) f.showcase = f.mark || (marked(ent.name) && !own);
-        projects.push({ category: cat, folder, key: `${cat}/${folder}`, title: titleFromFolder(folder), files });
+        const { base, year } = splitYear(folder);
+        projects.push({ category: cat, folder, key: `${cat}/${folder}`, base, year, title: titleFromFolder(base), files });
       } else if (ent.isFile()) {
         const name = clean(ent.name, true);
         if (!isMedia(name)) { report.skipped.push(`${cat}/${ent.name}`); continue; }
-        const base = name.slice(0, -extname(name).length);
-        projects.push({ category: cat, folder: name, key: `${cat}/${name}`, title: titleFromFolder(base), files: [{ name, path: join(SRC, catEnt.name, ent.name), key: `${cat}/${name}`, showcase: marked(ent.name) }] });
+        const ext = extname(name), { base, year } = splitYear(name.slice(0, -ext.length));
+        projects.push({ category: cat, folder: name, key: `${cat}/${name}`, base: base + ext, year, title: titleFromFolder(base), files: [{ name, path: join(SRC, catEnt.name, ent.name), key: `${cat}/${name}`, showcase: marked(ent.name) }] });
       }
     }
   }
@@ -414,11 +421,34 @@ async function main() {
     for (const it of p.items) if (!(it.key in meta.items)) it.key = known.get(tidyKey(it.key)) ?? it.key;
   }
 
-  // meta scaffolds (never overwrite existing entries)
+  // a renamed shoot ("Nasty" → "Nasty 24", "For Suel brand" → "For Suel brand 25" and "… 26") keeps its title, link, credits, order,
+  // and its works keep theirs; the old entries go. Same category first, else the one shoot of that name anywhere.
+  const live = new Set(projects.map(p => p.key)), folderOf = k => k.slice(k.indexOf('/') + 1);
+  // "for badlonmagazine" = "for badlon magazine" = "badlon magazine": "for" says who it was made for, it is not the name
+  const loose = s => String(s).toLowerCase().normalize('NFKD').replace(/^\s*for\s+/, '').replace(/[^a-z0-9а-яё]/g, '');
+  const bare = f => (IMG_EXT.has(extname(f).toLowerCase()) || VID_EXT.has(extname(f).toLowerCase())) ? f.slice(0, -extname(f).length) : f;
+  const orphans = Object.keys(meta.projects).filter(k => !live.has(k)), gone = new Set();
+  for (const p of projects) {
+    if (p.key in meta.projects) continue;
+    const hits = orphans.filter(k => loose(folderOf(k)) === loose(p.base));
+    const from = hits.find(k => k.startsWith(p.category + '/')) ?? (hits.length === 1 ? hits[0] : null);
+    if (!from) continue;
+    const prev = meta.projects[from];   // a title that only echoed the old folder name follows the new one; a written title stays
+    meta.projects[p.key] = { ...prev, title: !prev.title || loose(prev.title) === loose(bare(folderOf(from))) ? p.title : prev.title };
+    for (const it of p.items) {
+      const old = it.key === p.key ? from : `${from}/${it.key.slice(p.key.length + 1)}`;
+      if (!(it.key in meta.items) && old in meta.items) meta.items[it.key] = { ...meta.items[old] };
+    }
+    p.metaFrom = from; gone.add(from);
+  }
+  for (const k of gone) { delete meta.projects[k]; for (const ik of Object.keys(meta.items)) if (ik === k || ik.startsWith(k + '/')) delete meta.items[ik]; }
+
+  // meta scaffolds (never overwrite existing entries); a year in the folder name is the year
   for (const p of projects) {
     meta.projects[p.key] ??= { title: p.title, credits: '', link: '', order: null, railCount: null };
     meta.projects[p.key].link ??= '';
     meta.projects[p.key].year ??= '';
+    if (p.year) meta.projects[p.key].year = p.year;
     for (const it of p.items) meta.items[it.key] ??= { caption: '', hide: false, teaserStart: 0, role: '' };
   }
 
@@ -426,7 +456,8 @@ async function main() {
   for (const p of projects) {
     const pm = meta.projects[p.key];
     const title = (pm.title || p.title).trim() || p.title;
-    let slug = slugify(title); if (usedSlugs.has(slug)) { slug += '-' + usedSlugs.get(slug); } usedSlugs.set(slugify(title), (usedSlugs.get(slugify(title)) || 1) + 1);
+    const own = slugify(title) + (p.year ? '-' + p.year.slice(2) : '');   // series of one name stay apart: for-suel-brand-25, -26
+    let slug = own; if (usedSlugs.has(own)) { slug += '-' + usedSlugs.get(own); } usedSlugs.set(own, (usedSlugs.get(own) || 1) + 1);
     p.slug = slug; p.displayTitle = title;
     p.visible = pm.hide ? [] : p.items.filter(it => !meta.items[it.key]?.hide);   // a hidden shoot takes all its works with it
     for (const it of p.visible) it.id = `${slug}-${it.hash.slice(0, 6)}`;
@@ -549,7 +580,8 @@ async function main() {
   const photos = results.filter(e => e.type === 'photo').length, motion = results.length - photos;
   console.log(`\n== media report (${((Date.now() - t0) / 1000).toFixed(1)} s) ==`);
   console.log(`projects: ${manifest.projects.length}, items: ${results.length} (${photos} photo, ${motion} motion)`);
-  for (const p of manifest.projects) console.log(`  ${String(p.count).padStart(3)}  ${p.category} / ${p.title}  [${p.slug}]`);
+  const from = new Map(projects.map(p => [p.slug, p.metaFrom]));
+  for (const p of manifest.projects) console.log(`  ${String(p.count).padStart(3)}  ${p.category} / ${p.title}  ${p.year || '----'}  [${p.slug}]  !${p.items.filter(id => byId.get(id).showcase).length}${from.get(p.slug) ? `  ← ${from.get(p.slug)}` : ''}`);
   console.log(`roles: model ${results.filter(e => e.role === 'model').length}, styling ${results.filter(e => e.role === 'styling').length}`);
   console.log(`home strip (!): model ${results.filter(e => e.showcase && e.role === 'model').length}, styling ${results.filter(e => e.showcase && e.role === 'styling').length}`);
   console.log(`tiers: small ${fmtMB(stats.small)}, rail ${fmtMB(stats.rail)} (photo avg ${fmtKB(avgRail)}), full ${fmtMB(stats.full)}, poster ${fmtMB(stats.poster)}`);
