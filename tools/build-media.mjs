@@ -458,7 +458,7 @@ async function main() {
     const title = (pm.title || p.title).trim() || p.title;
     const own = slugify(title) + (p.year ? '-' + p.year.slice(2) : '');   // series of one name stay apart: for-suel-brand-25, -26
     let slug = own; if (usedSlugs.has(own)) { slug += '-' + usedSlugs.get(own); } usedSlugs.set(own, (usedSlugs.get(own) || 1) + 1);
-    p.slug = slug; p.displayTitle = title;
+    p.slug = slug; p.displayTitle = title.replace(/^for\s+/i, '') || title;   // "for" says who it was made for; the site shows the name (the slug keeps it, ids stay)
     p.visible = pm.hide ? [] : p.items.filter(it => !meta.items[it.key]?.hide);   // a hidden shoot takes all its works with it
     for (const it of p.visible) it.id = `${slug}-${it.hash.slice(0, 6)}`;
   }
