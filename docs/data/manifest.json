@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-13T19:21:47.795Z",
+  "generated": "2026-10-13T19:24:33.416Z",
   "site": {
     "name": "mila harys",
     "role": "TODO: stylist · art direction · model",
@@ -34,7 +34,7 @@
   "projects": [
     {
       "slug": "for-ai-brand-25",
-      "title": "for Ai brand",
+      "title": "Ai brand",
       "category": "modeling",
       "categoryLabel": "modeling",
       "credits": "",
@@ -56,7 +56,7 @@
     },
     {
       "slug": "for-angeldust-25",
-      "title": "For Angeldust",
+      "title": "Angeldust",
       "category": "modeling",
       "categoryLabel": "modeling",
       "credits": "",
@@ -74,7 +74,7 @@
     },
     {
       "slug": "for-arligent-brand-26",
-      "title": "For Arligent brand",
+      "title": "Arligent brand",
       "category": "modeling",
       "categoryLabel": "modeling",
       "credits": "",
@@ -97,7 +97,7 @@
     },
     {
       "slug": "for-badlon-magazine-25",
-      "title": "for badlon magazine",
+      "title": "badlon magazine",
       "category": "modeling",
       "categoryLabel": "modeling",
       "credits": "",
@@ -116,7 +116,7 @@
     },
     {
       "slug": "for-bogema-leningrad",
-      "title": "For bogema leningrad",
+      "title": "bogema leningrad",
       "category": "modeling",
       "categoryLabel": "modeling",
       "credits": "",
@@ -134,7 +134,7 @@
     },
     {
       "slug": "for-last-seen-25",
-      "title": "For LAST SEEN",
+      "title": "LAST SEEN",
       "category": "modeling",
       "categoryLabel": "modeling",
       "credits": "",
@@ -151,7 +151,7 @@
     },
     {
       "slug": "for-rel-cher-26",
-      "title": "For Rel.cher",
+      "title": "Rel.cher",
       "category": "modeling",
       "categoryLabel": "modeling",
       "credits": "",
@@ -170,7 +170,7 @@
     },
     {
       "slug": "for-rudy-i-eye-26",
-      "title": "For Rudy i eye",
+      "title": "Rudy i eye",
       "category": "modeling",
       "categoryLabel": "modeling",
       "credits": "",
@@ -194,7 +194,7 @@
     },
     {
       "slug": "for-sorocolita-26",
-      "title": "For Sorocolita",
+      "title": "Sorocolita",
       "category": "modeling",
       "categoryLabel": "modeling",
       "credits": "",
@@ -213,7 +213,7 @@
     },
     {
       "slug": "for-suel-brand-25",
-      "title": "For Suel brand",
+      "title": "Suel brand",
       "category": "modeling",
       "categoryLabel": "modeling",
       "credits": "",
@@ -234,7 +234,7 @@
     },
     {
       "slug": "for-suel-brand-26",
-      "title": "for Suel brand",
+      "title": "Suel brand",
       "category": "modeling",
       "categoryLabel": "modeling",
       "credits": "",
@@ -333,7 +333,7 @@
     },
     {
       "slug": "for-anteroom-store-25",
-      "title": "For Anteroom store",
+      "title": "Anteroom store",
       "category": "styling",
       "categoryLabel": "styling",
       "credits": "",
@@ -352,7 +352,7 @@
     },
     {
       "slug": "for-anteroom-store-26",
-      "title": "For Anteroom store",
+      "title": "Anteroom store",
       "category": "styling",
       "categoryLabel": "styling",
       "credits": "",
@@ -373,7 +373,7 @@
     },
     {
       "slug": "for-c-ordyceps-brand-goodbuy-horses-26",
-      "title": "For C.ordyceps brand - _Goodbuy horses",
+      "title": "C.ordyceps brand - _Goodbuy horses",
       "category": "styling",
       "categoryLabel": "styling",
       "credits": "",
@@ -398,7 +398,7 @@
     },
     {
       "slug": "for-creative-contora-rent-25",
-      "title": "for creative contora rent",
+      "title": "creative contora rent",
       "category": "styling",
       "categoryLabel": "styling",
       "credits": "",
@@ -423,7 +423,7 @@
     },
     {
       "slug": "for-elizabeth-morozova-independent-designer-26",
-      "title": "For Elizabeth Morozova independent designer",
+      "title": "Elizabeth Morozova independent designer",
       "category": "styling",
       "categoryLabel": "styling",
       "credits": "",
@@ -444,7 +444,7 @@
     },
     {
       "slug": "for-harry-denims-26",
-      "title": "For Harry Denims",
+      "title": "Harry Denims",
       "category": "styling",
       "categoryLabel": "styling",
       "credits": "",
@@ -464,7 +464,7 @@
     },
     {
       "slug": "for-imk-brand-26",
-      "title": "For IMK brand",
+      "title": "IMK brand",
       "category": "styling",
       "categoryLabel": "styling",
       "credits": "",
@@ -485,7 +485,7 @@
     },
     {
       "slug": "for-ola-ola-store-25",
-      "title": "For Ola Ola store",
+      "title": "Ola Ola store",
       "category": "styling",
       "categoryLabel": "styling",
       "credits": "",
@@ -507,7 +507,7 @@
     },
     {
       "slug": "for-park-by-osipchuk",
-      "title": "For Park by Osipchuk",
+      "title": "Park by Osipchuk",
       "category": "styling",
       "categoryLabel": "styling",
       "credits": "",
@@ -526,7 +526,7 @@
     },
     {
       "slug": "for-sergeipavlov-brand",
-      "title": "for sergeipavlov brand",
+      "title": "sergeipavlov brand",
       "category": "styling",
       "categoryLabel": "styling",
       "credits": "",
@@ -543,7 +543,7 @@
     },
     {
       "slug": "for-shardsscream",
-      "title": "for Shardsscream",
+      "title": "Shardsscream",
       "category": "styling",
       "categoryLabel": "styling",
       "credits": "",
@@ -565,7 +565,7 @@
     },
     {
       "slug": "for-v-vintage-store-25",
-      "title": "For v.vintage store",
+      "title": "v.vintage store",
       "category": "styling",
       "categoryLabel": "styling",
       "credits": "",
@@ -588,7 +588,7 @@
     },
     {
       "slug": "for-v-vintage-store-26",
-      "title": "For V.vintage store",
+      "title": "V.vintage store",
       "category": "styling",
       "categoryLabel": "styling",
       "credits": "",
