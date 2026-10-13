@@ -1,6 +1,6 @@
 // Strip: photos packed into columns that fill the whole viewport, infinite horizontal scroll.
 // One transform per frame on the track; nodes keep static left/top and only hop by loopW when they wrap.
-import { pickTier, preloadImage, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=5ea5f67a';
+import { pickTier, preloadImage, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=d9d3cce2';
 
 export function createStrip({ items, stage, loop = true, loopIfWide = false, layout = 'scatter', swipeDown = false, maxTier = 'full', onOpen }) {
   let looping = loop;                      // a band loops too once it is wider than the screen
@@ -45,18 +45,16 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
     }
     return x;
   }
-  // phone: frames glued edge to edge in one row, each a random height, centred on the band line
+  // phone: frames glued edge to edge in one row, each a random height, scattered inside the band mila marked:
+  // from 27% to 70% of the screen, so the photos, not the paper, fill a phone
   function layoutTight(list) {
-    // one axis across the screen; every frame hangs on it with a small offset, so neighbours always overlap by well over half
-    const topSafe = 56, bottomSafe = Math.max(vh * 0.1, 96);   // model / styling sit above the strip
-    const free = vh - topSafe - bottomSafe;
-    const axis = topSafe + free * (0.44 + rnd(list[0]?.item || {}).c * 0.12);   // 44–56% of the free band, chosen per visit
+    const bandTop = vh * 0.27, bandH = vh * 0.43;
     let x = 0;
     for (const node of list) {
       const r = rnd(node.item), ar = node.item.w / node.item.h;
-      let h = vh * (0.19 + r.a * 0.06), w = h * ar;           // about a fifth to a quarter of the screen height
+      let h = bandH * (0.74 + r.a * 0.26), w = h * ar;      // 32–43% of the screen height
       if (w > vw * 0.96) { w = vw * 0.96; h = w / ar; }
-      const top = axis - h / 2 + (r.b - 0.5) * 0.4 * h;      // centre within ±20% of its own height from the axis
+      const top = bandTop + r.b * (bandH - h);              // anywhere in the band: the tallest touch both marks
       place(node, x, top, w, h); x += node.w;
     }
     return x;
@@ -318,7 +316,7 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
     const id = ++swapId;
     if (!active || REDUCED.matches) { setItems(list); return; }
     // the first screen of the new set starts loading while the old one leaves (tier guessed from the usual frame height)
-    const tall = vw < 700 ? 0.25 : 0.6, guess = vh * tall * (devicePixelRatio || 1) <= 600 ? 'small' : 'rail';
+    const tall = vw < 700 ? 0.43 : 0.6, guess = vh * tall * (devicePixelRatio || 1) <= 600 ? 'small' : 'rail';
     for (const i of list.slice(0, 6)) if (i.type === 'photo' && i[guess]) preloadImage(i[guess].src).catch(() => {});
     const out = onScreen();
     await Promise.all(out.map((n, i) => n.el.animate(OUT, { duration: T2, delay: i * STEP, easing: E_IO, fill: 'forwards' }).finished.catch(() => {})));
