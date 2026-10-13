@@ -111,13 +111,13 @@ async function scan() {
         if (!files.length) { report.empty.push(`${cat}/${folder}`); continue; }
         const own = files.some(f => f.mark);   // a marked shoot with marked files inside shows only those files
         for (const f of files) f.showcase = f.mark || (marked(ent.name) && !own);
-        const { base, year } = splitYear(folder);
-        projects.push({ category: cat, folder, key: `${cat}/${folder}`, base, year, title: titleFromFolder(base), files });
+        const { base, year } = splitYear(titleFromFolder(folder));   // quotes first: the closing "_" of _x_ is not a separator before the year
+        projects.push({ category: cat, folder, key: `${cat}/${folder}`, base, year, title: base, files });
       } else if (ent.isFile()) {
         const name = clean(ent.name, true);
         if (!isMedia(name)) { report.skipped.push(`${cat}/${ent.name}`); continue; }
-        const ext = extname(name), { base, year } = splitYear(name.slice(0, -ext.length));
-        projects.push({ category: cat, folder: name, key: `${cat}/${name}`, base: base + ext, year, title: titleFromFolder(base), files: [{ name, path: join(SRC, catEnt.name, ent.name), key: `${cat}/${name}`, showcase: marked(ent.name) }] });
+        const ext = extname(name), { base, year } = splitYear(titleFromFolder(name.slice(0, -ext.length)));
+        projects.push({ category: cat, folder: name, key: `${cat}/${name}`, base: base + ext, year, title: base, files: [{ name, path: join(SRC, catEnt.name, ent.name), key: `${cat}/${name}`, showcase: marked(ent.name) }] });
       }
     }
   }
