@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 // Media pipeline: media-src/<category>/<project>/files  →  public/media/{rail,full,poster}/…
 // Sources are read-only. Outputs are webp/mp4 with clean [a-z0-9-] names and no metadata.
+// Another source folder: npm run media -- "/path/to/portfolio"  (or MEDIA_SRC=…)
+// Showcase: a "!" in a file name puts that work on the home strip; a "!" on a shoot folder puts the whole shoot there,
+// unless some files inside carry their own "!", then only those. Keys in meta.json are the names without the "!".
 import sharp from 'sharp';
 import ffmpegPath from 'ffmpeg-static';
 import ffprobeStatic from 'ffprobe-static';
@@ -16,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 const run = promisify(execFile);
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const SRC = join(ROOT, 'media-src');
+const SRC = resolve(process.argv[2] || process.env.MEDIA_SRC || join(ROOT, 'media-src'));
 const PUB = join(ROOT, 'docs');   // GitHub Pages serves this folder
 const MEDIA = join(PUB, 'media');
 const CONTENT = join(ROOT, 'content');
@@ -49,6 +52,14 @@ export function slugify(s) {
 export function titleFromFolder(name) {
   return name.trim().replace(/_([^_]+)_/g, '“$1”').replace(/\s+/g, ' ');
 }
+// the showcase mark: "!" and its look-alikes (fullwidth, emoji); clean() is the name as if it were never marked
+const MARK = /[!！❗❕‼⁉]️?/g;
+const marked = name => { MARK.lastIndex = 0; return MARK.test(name); };
+function clean(name, isFile) {
+  const s = name.replace(MARK, ''), ext = isFile ? extname(s) : '';
+  const base = (ext ? s.slice(0, -ext.length) : s).replace(/\s+/g, ' ').trim();
+  return (base || 'untitled') + ext;
+}
 function hashFile(p) {
   return new Promise((res, rej) => {
     const h = createHash('sha1');
@@ -76,21 +87,29 @@ async function pmap(list, n, fn) {
 
 // ---------- scan ----------
 async function scan() {
-  const projects = []; const report = { empty: [], dupes: [], small: [] };
-  const cats = (await readdir(SRC, { withFileTypes: true })).filter(d => d.isDirectory() && !d.name.startsWith('.')).map(d => d.name).sort(natural);
-  for (const cat of cats) {
-    const entries = (await readdir(join(SRC, cat), { withFileTypes: true })).filter(d => !d.name.startsWith('.'));
-    for (const ent of entries.sort((a, b) => natural(a.name, b.name))) {
+  const projects = []; const report = { empty: [], dupes: [], small: [], nested: [] };
+  const isMedia = n => IMG_EXT.has(extname(n).toLowerCase()) || VID_EXT.has(extname(n).toLowerCase());
+  const byClean = isFile => (a, b) => natural(clean(a.name, isFile), clean(b.name, isFile));   // a "!" never moves a shoot or a frame
+  const cats = (await readdir(SRC, { withFileTypes: true })).filter(d => d.isDirectory() && !d.name.startsWith('.')).sort(byClean(false));
+  for (const catEnt of cats) {
+    const cat = clean(catEnt.name, false);
+    const entries = (await readdir(join(SRC, catEnt.name), { withFileTypes: true })).filter(d => !d.name.startsWith('.'));
+    for (const ent of entries.sort((a, b) => natural(clean(a.name, a.isFile()), clean(b.name, b.isFile())))) {
       if (ent.isDirectory()) {
-        const dir = join(SRC, cat, ent.name);
-        const files = (await readdir(dir)).filter(f => !f.startsWith('.') && (IMG_EXT.has(extname(f).toLowerCase()) || VID_EXT.has(extname(f).toLowerCase()))).sort(natural);
-        if (!files.length) { report.empty.push(`${cat}/${ent.name}`); continue; }
-        projects.push({ category: cat, folder: ent.name, key: `${cat}/${ent.name}`, title: titleFromFolder(ent.name), files: files.map(f => ({ name: f, path: join(dir, f), key: `${cat}/${ent.name}/${f}` })) });
+        const dir = join(SRC, catEnt.name, ent.name), folder = clean(ent.name, false);
+        const inside = (await readdir(dir, { withFileTypes: true })).filter(d => !d.name.startsWith('.'));
+        for (const d of inside) if (d.isDirectory()) report.nested.push(`${cat}/${folder}/${d.name}`);
+        const files = inside.filter(d => !d.isDirectory() && isMedia(clean(d.name, true))).sort(byClean(true))
+          .map(d => { const name = clean(d.name, true); return { name, path: join(dir, d.name), key: `${cat}/${folder}/${name}`, mark: marked(d.name) }; });
+        if (!files.length) { report.empty.push(`${cat}/${folder}`); continue; }
+        const own = files.some(f => f.mark);   // a marked shoot with marked files inside shows only those files
+        for (const f of files) f.showcase = f.mark || (marked(ent.name) && !own);
+        projects.push({ category: cat, folder, key: `${cat}/${folder}`, title: titleFromFolder(folder), files });
       } else if (ent.isFile()) {
-        const ext = extname(ent.name).toLowerCase();
-        if (!IMG_EXT.has(ext) && !VID_EXT.has(ext)) continue;
-        const base = ent.name.slice(0, -ext.length);
-        projects.push({ category: cat, folder: ent.name, key: `${cat}/${ent.name}`, title: titleFromFolder(base), files: [{ name: ent.name, path: join(SRC, cat, ent.name), key: `${cat}/${ent.name}` }] });
+        const name = clean(ent.name, true);
+        if (!isMedia(name)) continue;
+        const base = name.slice(0, -extname(name).length);
+        projects.push({ category: cat, folder: name, key: `${cat}/${name}`, title: titleFromFolder(base), files: [{ name, path: join(SRC, catEnt.name, ent.name), key: `${cat}/${name}`, showcase: marked(ent.name) }] });
       }
     }
   }
@@ -99,8 +118,8 @@ async function scan() {
     const seen = new Map(); const items = [];
     for (const f of p.files) {
       f.hash = await hashFile(f.path);
-      if (seen.has(f.hash)) { report.dupes.push(`${f.key}  (same as ${seen.get(f.hash)})`); continue; }
-      seen.set(f.hash, f.name);
+      if (seen.has(f.hash)) { const kept = seen.get(f.hash); kept.showcase ||= f.showcase; report.dupes.push(`${f.key}  (same as ${kept.name})`); continue; }
+      seen.set(f.hash, f);
       items.push(f);
     }
     // Live Photo: image + mov with same basename → motion, image is the poster
@@ -114,7 +133,7 @@ async function scan() {
       const img = group.find(g => IMG_EXT.has(extname(g.name).toLowerCase()));
       const vid = group.find(g => VID_EXT.has(extname(g.name).toLowerCase()));
       if (img && vid) {
-        if (f === img) merged.push({ ...vid, type: 'motion', poster: img, key: vid.key, livePhoto: true, hash: vid.hash });
+        if (f === img) merged.push({ ...vid, type: 'motion', poster: img, key: vid.key, livePhoto: true, hash: vid.hash, showcase: vid.showcase || img.showcase });
         continue; // skip the mov itself and the image (already merged)
       }
       merged.push({ ...f, type: VID_EXT.has(ext) ? 'motion' : 'photo' });
@@ -411,6 +430,7 @@ async function main() {
     const im = meta.items[it.key]; const v = it.hash.slice(0, 6);
     const srcM = await mtime(it.path);
     const entry = { id: it.id, project: p.slug, type: it.type, onRail: false, caption: im.caption || '', role: roleOf(site, p.category, im) };
+    if (it.showcase) entry.showcase = true;
     if (it.type === 'photo') {
       const outR = join(MEDIA, 'rail', `${it.id}.webp`), outF = join(MEDIA, 'full', `${it.id}.webp`), outS = join(MEDIA, 'small', `${it.id}.webp`);
       referenced.add(outR); referenced.add(outF); referenced.add(outS);
@@ -522,8 +542,10 @@ async function main() {
   console.log(`projects: ${manifest.projects.length}, items: ${results.length} (${photos} photo, ${motion} motion)`);
   for (const p of manifest.projects) console.log(`  ${String(p.count).padStart(3)}  ${p.category} / ${p.title}  [${p.slug}]`);
   console.log(`roles: model ${results.filter(e => e.role === 'model').length}, styling ${results.filter(e => e.role === 'styling').length}`);
+  console.log(`home strip (!): model ${results.filter(e => e.showcase && e.role === 'model').length}, styling ${results.filter(e => e.showcase && e.role === 'styling').length}`);
   console.log(`tiers: small ${fmtMB(stats.small)}, rail ${fmtMB(stats.rail)} (photo avg ${fmtKB(avgRail)}), full ${fmtMB(stats.full)}, poster ${fmtMB(stats.poster)}`);
   if (report.empty.length) console.log(`empty folders (skipped): ${report.empty.join('; ')}`);
+  if (report.nested.length) console.log(`folders inside a shoot (skipped):\n  ${report.nested.join('\n  ')}`);
   if (report.dupes.length) console.log(`duplicates (skipped):\n  ${report.dupes.join('\n  ')}`);
   if (report.small.length) console.log(`sources below 1600px (HQ will be soft):\n  ${report.small.join('\n  ')}`);
   if (removed.length) console.log(`removed orphan outputs: ${removed.join(', ')}`);

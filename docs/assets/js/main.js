@@ -1,13 +1,13 @@
-import { createStrip } from './strip.js?v=5dc2e402';
-import { createWardrobe } from './wardrobe.js?v=5dc2e402';
-import { createViewer } from './viewer.js?v=5dc2e402';
-import { onRoute, navigate, back, parse } from './router.js?v=5dc2e402';
-import { shuffle, esc } from './media.js?v=5dc2e402';
+import { createStrip } from './strip.js?v=9dc0e578';
+import { createWardrobe } from './wardrobe.js?v=9dc0e578';
+import { createViewer } from './viewer.js?v=9dc0e578';
+import { onRoute, navigate, back, parse } from './router.js?v=9dc0e578';
+import { shuffle, esc } from './media.js?v=9dc0e578';
 
 // When embedded elsewhere (Tilda T123), window.MH_BASE points at the hosted folder; everything loads from there.
 const BASE = (window.MH_BASE || new URL('../../', import.meta.url).href).replace(/\/?$/, '/');
 const abs = u => (u && !/^(https?:)?\/\//.test(u) ? BASE + u : u);
-import { MARKUP } from './markup.js?v=5dc2e402';
+import { MARKUP } from './markup.js?v=9dc0e578';
 if (!document.getElementById('stage')) document.body.insertAdjacentHTML('beforeend', MARKUP);
 const manifest = await (await fetch(BASE + 'data/manifest.json', { cache: 'no-cache' })).json();
 const site = manifest.site || {};
@@ -60,10 +60,13 @@ function spread(list, window = 3) {
   return out;
 }
 // one selection per role for the whole visit: switching back and forth shows the same frames
+// the home strip shows only the works mila marked with "!" (all of them, mixed anew each visit);
+// a side with nothing marked yet falls back to the random pick so the strip is never empty
 const selections = new Map();
 function selectionFor(r) {
   if (selections.has(r)) return selections.get(r);
-  let selected = visit.flatMap(p => pick(p, r));
+  const marked = visit.flatMap(p => ofRole(p, r).filter(i => i.showcase));
+  let selected = marked.length ? marked : visit.flatMap(p => pick(p, r));
   if (site.railMode !== 'projects') selected = spread(selected);
   // shoots with an explicit order are pinned to the start of the strip (first column = start screen)
   const pinned = selected.filter(i => Number.isInteger(i.projectObj.order)).sort((a, b) => a.projectObj.order - b.projectObj.order);
