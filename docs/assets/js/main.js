@@ -1,13 +1,13 @@
-import { createStrip } from './strip.js?v=9dc0e578';
-import { createWardrobe } from './wardrobe.js?v=9dc0e578';
-import { createViewer } from './viewer.js?v=9dc0e578';
-import { onRoute, navigate, back, parse } from './router.js?v=9dc0e578';
-import { shuffle, esc } from './media.js?v=9dc0e578';
+import { createStrip } from './strip.js?v=5ea5f67a';
+import { createWardrobe } from './wardrobe.js?v=5ea5f67a';
+import { createViewer } from './viewer.js?v=5ea5f67a';
+import { onRoute, navigate, back, parse } from './router.js?v=5ea5f67a';
+import { shuffle, esc } from './media.js?v=5ea5f67a';
 
 // When embedded elsewhere (Tilda T123), window.MH_BASE points at the hosted folder; everything loads from there.
 const BASE = (window.MH_BASE || new URL('../../', import.meta.url).href).replace(/\/?$/, '/');
 const abs = u => (u && !/^(https?:)?\/\//.test(u) ? BASE + u : u);
-import { MARKUP } from './markup.js?v=9dc0e578';
+import { MARKUP } from './markup.js?v=5ea5f67a';
 if (!document.getElementById('stage')) document.body.insertAdjacentHTML('beforeend', MARKUP);
 const manifest = await (await fetch(BASE + 'data/manifest.json', { cache: 'no-cache' })).json();
 const site = manifest.site || {};
@@ -187,16 +187,6 @@ const closeProject = () => { if (layerOpen === 'project') back(home()); };
 $('#project-stage').addEventListener('tapout', closeProject);
 $('#project-stage').addEventListener('swipedown', closeProject);
 $('#p-title').addEventListener('click', e => { if (!currentProject?.link) { e.preventDefault(); closeProject(); } });
-// preloader leaves once what the visitor will see first is decoded: the first screen and the one next to it
-{
-  const t0 = performance.now(), MAX = 4500, MIN = 700;
-  const watched = () => { const cur = layerOpen === 'project' ? projectStrip : strip; const vw = innerWidth; return cur.debugNodes().filter(n => { const r = n.el.getBoundingClientRect(); return r.right > -vw * 0.3 && r.left < vw * 1.8; }); };
-  const iv = setInterval(() => {
-    const el = performance.now() - t0, ns = watched();
-    const ready = ns.length && ns.every(n => n.el.classList.contains('loaded') && (!n.media || n.media.tagName !== 'IMG' || n.media.complete));
-    if ((ready && el > MIN) || el > MAX || viewer.isOpen || layerOpen === 'wardrobe' || layerOpen === 'contact') { clearInterval(iv); window.MH_HIDE_LOADER?.(); }
-  }, 80);
-}
 // the gallery's rows are laid out while nobody looks, so opening it is only a fade
 (window.requestIdleCallback || (f => setTimeout(f, 800)))(() => wardrobe.prepare());
 window.__strip = strip; window.__pstrip = projectStrip;
