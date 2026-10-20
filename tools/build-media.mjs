@@ -399,11 +399,18 @@ function roleOf(site, cat, im) {
 // ---------- main ----------
 async function main() {
   const t0 = Date.now();
-  if (!existsSync(SRC)) {   // a machine without the sources (code-only edits): icons from the seal, then the version so caches turn over
+  if (!existsSync(SRC)) {   // a machine without the sources (code and text edits): icons, site.json into the manifest and meta tags, then the version so caches turn over
+    const site = await readJSON(join(CONTENT, 'site.json'), {});
     const icon = await findIcon(), seal = icon ? null : await findSeal();
-    if (icon) await buildBrandFromIcon(icon); else if (seal) await buildBrandFromSeal(seal, await readJSON(join(CONTENT, 'site.json'), {}));
+    if (icon) await buildBrandFromIcon(icon); else if (seal) await buildBrandFromSeal(seal, site);
+    const manifestFile = join(PUB, 'data', 'manifest.json'), manifest = await readJSON(manifestFile, null);
+    if (manifest) {
+      manifest.site = site;
+      await writeJSON(manifestFile, manifest);
+      await injectHtml(site, manifest, new Map(manifest.items.map(i => [i.id, i])));
+    }
     const codeV = await stampVersion();
-    console.log(`no media-src here: media untouched, icons ${icon || seal ? 'rebuilt' : 'kept'}, code version ${codeV}`);
+    console.log(`no media-src here: media untouched, icons ${icon || seal ? 'rebuilt' : 'kept'}, site.json and meta ${manifest ? 'applied' : 'kept (no manifest)'}, code version ${codeV}`);
     return;
   }
   const site = await readJSON(join(CONTENT, 'site.json'), {});
