@@ -314,10 +314,12 @@ async function findIcon() {
   return null;
 }
 async function buildBrandFromIcon(iconPath) {
-  const src = () => iconPath.endsWith('.svg') ? sharp(iconPath, { density: 1200 }) : sharp(iconPath);   // vector rendered large, then scaled down
-  const at = (n, h = n) => src().resize(n, h, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 }, kernel: 'lanczos3' }).png().toBuffer();
-  await writeFile(join(PUB, 'favicon.png'), await at(64));
-  const sizes = [16, 32, 48], pngs = []; for (const n of sizes) pngs.push(await at(n));
+  const svg = iconPath.endsWith('.svg') ? await readFile(iconPath, 'utf8') : null;
+  // vector rendered large, then scaled down; tab sizes take the bare shapes: the rough-edge filter turns to noise below ~64px
+  const src = (clean) => svg ? sharp(Buffer.from(clean ? svg.replace(/\s+filter="url\([^)]*\)"/g, '') : svg), { density: 1200 }) : sharp(iconPath);
+  const at = (n, h = n, clean = false) => src(clean).resize(n, h, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 }, kernel: 'lanczos3' }).png().toBuffer();
+  await writeFile(join(PUB, 'favicon.png'), await at(64, 64, true));
+  const sizes = [16, 32, 48], pngs = []; for (const n of sizes) pngs.push(await at(n, n, true));
   const head = Buffer.alloc(6 + 16 * sizes.length); head.writeUInt16LE(0, 0); head.writeUInt16LE(1, 2); head.writeUInt16LE(sizes.length, 4);
   let off = head.length;
   sizes.forEach((n, i) => { const e = 6 + 16 * i; head.writeUInt8(n, e); head.writeUInt8(n, e + 1); head.writeUInt8(0, e + 2); head.writeUInt8(0, e + 3); head.writeUInt16LE(1, e + 4); head.writeUInt16LE(32, e + 6); head.writeUInt32LE(pngs[i].length, e + 8); head.writeUInt32LE(off, e + 12); off += pngs[i].length; });
@@ -326,8 +328,8 @@ async function buildBrandFromIcon(iconPath) {
   await sharp({ create: { width: 180, height: 180, channels: 3, background: '#FFFFFF' } }).composite([{ input: await at(140), gravity: 'centre' }]).png().toFile(join(PUB, 'apple-touch-icon.png'));
   const W = 1200, H = 630;
   await sharp({ create: { width: W, height: H, channels: 3, background: '#FFFFFF' } })
-    .composite([{ input: await at(640, 420), gravity: 'centre' }])
-    .jpeg({ quality: 88 }).toFile(join(PUB, 'og.jpg'));
+    .composite([{ input: await at(760, 420), gravity: 'centre' }])
+    .jpeg({ quality: 95, chromaSubsampling: '4:4:4' }).toFile(join(PUB, 'og.jpg'));   // black on white: low quality rings around the edges
 }
 
 // ---------- index.html: meta + noscript ----------
