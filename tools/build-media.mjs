@@ -341,7 +341,9 @@ async function injectHtml(site, manifest, byId) {
   // link previews and the tab carry the roles only; the name stays as the fallback when no role is set
   const name = site.name || 'mila harys', role = tidy(site.role), title = role || name, desc = tidy(site.description) || title;
   const base = tidy(site.url).replace(/\/$/, '');
-  const og = base ? `${base}/og.jpg` : 'og.jpg';
+  // the image URL carries its own hash: Telegram, WhatsApp and the rest cache previews by URL and would keep an old picture
+  const ogFile = join(PUB, 'og.jpg'), ogV = existsSync(ogFile) ? createHash('sha1').update(await readFile(ogFile)).digest('hex').slice(0, 8) : '';
+  const og = (base ? `${base}/og.jpg` : 'og.jpg') + (ogV ? `?v=${ogV}` : '');
   const meta = `<title>${escHtml(title)}</title>
 <meta name="description" content="${escHtml(desc)}">
 <meta name="theme-color" content="#FFFFFF">
