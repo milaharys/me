@@ -308,10 +308,14 @@ async function buildBrandFromSeal(sealPath, site) {
     .jpeg({ quality: 88 }).toFile(join(PUB, 'og.jpg'));
 }
 
-// ---------- favicon, touch icon and og image from content/brand/icon.png (a transparent round mark, as GitHub's) ----------
-async function findIcon() { const p = join(CONTENT, 'brand', 'icon.png'); return existsSync(p) ? p : null; }
+// ---------- favicon, touch icon and og image from content/brand/logo.svg (or icon.png): the mark fitted into each box, transparent around it ----------
+async function findIcon() {
+  for (const n of ['logo.svg', 'icon.png']) { const p = join(CONTENT, 'brand', n); if (existsSync(p)) return p; }
+  return null;
+}
 async function buildBrandFromIcon(iconPath) {
-  const at = n => sharp(iconPath).resize(n, n, { kernel: 'lanczos3' }).png().toBuffer();   // the mark itself, transparent around the disc
+  const src = () => iconPath.endsWith('.svg') ? sharp(iconPath, { density: 1200 }) : sharp(iconPath);   // vector rendered large, then scaled down
+  const at = (n, h = n) => src().resize(n, h, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 }, kernel: 'lanczos3' }).png().toBuffer();
   await writeFile(join(PUB, 'favicon.png'), await at(64));
   const sizes = [16, 32, 48], pngs = []; for (const n of sizes) pngs.push(await at(n));
   const head = Buffer.alloc(6 + 16 * sizes.length); head.writeUInt16LE(0, 0); head.writeUInt16LE(1, 2); head.writeUInt16LE(sizes.length, 4);
@@ -320,9 +324,9 @@ async function buildBrandFromIcon(iconPath) {
   await writeFile(join(PUB, 'favicon.ico'), Buffer.concat([head, ...pngs]));
   // iOS needs an opaque square: the mark on white with air around it
   await sharp({ create: { width: 180, height: 180, channels: 3, background: '#FFFFFF' } }).composite([{ input: await at(140), gravity: 'centre' }]).png().toFile(join(PUB, 'apple-touch-icon.png'));
-  const W = 1200, H = 630, S = 420;
+  const W = 1200, H = 630;
   await sharp({ create: { width: W, height: H, channels: 3, background: '#FFFFFF' } })
-    .composite([{ input: await at(S), left: Math.round((W - S) / 2), top: Math.round((H - S) / 2) }])
+    .composite([{ input: await at(640, 420), gravity: 'centre' }])
     .jpeg({ quality: 88 }).toFile(join(PUB, 'og.jpg'));
 }
 
@@ -332,8 +336,8 @@ const tidy = s => (s && /^TODO/i.test(s)) ? s.replace(/^TODO:?\s*/i, '') : (s ||
 async function injectHtml(site, manifest, byId) {
   const file = join(PUB, 'index.html');
   let html = await readFile(file, 'utf8');
-  const name = site.name || 'mila harys', role = tidy(site.role), desc = tidy(site.description) || [name, role].filter(Boolean).join(' — ');
-  const title = [name, role].filter(Boolean).join(' — ');
+  // link previews and the tab carry the roles only; the name stays as the fallback when no role is set
+  const name = site.name || 'mila harys', role = tidy(site.role), title = role || name, desc = tidy(site.description) || title;
   const base = tidy(site.url).replace(/\/$/, '');
   const og = base ? `${base}/og.jpg` : 'og.jpg';
   const meta = `<title>${escHtml(title)}</title>
