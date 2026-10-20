@@ -1,0 +1,35 @@
+# Sprinthost (Apache). Every block is guarded: a module the server lacks is skipped, not a 500.
+AddDefaultCharset utf-8
+Options -Indexes
+
+<IfModule mod_mime.c>
+  AddType text/javascript .js .mjs
+  AddType application/json .json
+  AddType image/webp .webp
+  AddType image/svg+xml .svg
+  AddType video/mp4 .mp4
+  AddType image/x-icon .ico
+</IfModule>
+
+# text compressed: manifest.json 180 KB -> ~20 KB, which is what a slow VPN link feels
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/plain text/javascript application/javascript application/json image/svg+xml
+</IfModule>
+
+<IfModule mod_headers.c>
+  # page, data and the unversioned entry script: always revalidated, so a new upload shows up at once
+  <FilesMatch "\.(html|json|txt)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+  # styles and modules are requested with ?v=<build>: a new build is a new URL
+  <FilesMatch "\.(css|js)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "^boot\.js$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+  # icons and the preview image keep their names between builds
+  <FilesMatch "\.(ico|png|jpg|svg)$">
+    Header set Cache-Control "public, max-age=86400"
+  </FilesMatch>
+</IfModule>

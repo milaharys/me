@@ -1,5 +1,5 @@
 // Wardrobe: every work, by project, justified rows, lazy HQ loading. With a role picked, only that side of the work.
-import { pickTier, esc, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=d9d3cce2';
+import { pickTier, esc, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=28040460';
 
 export function createWardrobe({ el, projects, role = null, onOpen }) {
   const scroll = el.querySelector('.scroll');

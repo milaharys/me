@@ -1,15 +1,24 @@
-import { createStrip } from './strip.js?v=d9d3cce2';
-import { createWardrobe } from './wardrobe.js?v=d9d3cce2';
-import { createViewer } from './viewer.js?v=d9d3cce2';
-import { onRoute, navigate, back, parse } from './router.js?v=d9d3cce2';
-import { shuffle, esc } from './media.js?v=d9d3cce2';
+import { createStrip } from './strip.js?v=28040460';
+import { createWardrobe } from './wardrobe.js?v=28040460';
+import { createViewer } from './viewer.js?v=28040460';
+import { onRoute, navigate, back, parse } from './router.js?v=28040460';
+import { shuffle, esc } from './media.js?v=28040460';
 
 // When embedded elsewhere (Tilda T123), window.MH_BASE points at the hosted folder; everything loads from there.
 const BASE = (window.MH_BASE || new URL('../../', import.meta.url).href).replace(/\/?$/, '/');
 const abs = u => (u && !/^(https?:)?\/\//.test(u) ? BASE + u : u);
-import { MARKUP } from './markup.js?v=d9d3cce2';
+import { MARKUP } from './markup.js?v=28040460';
 if (!document.getElementById('stage')) document.body.insertAdjacentHTML('beforeend', MARKUP);
-const manifest = await (await fetch(BASE + 'data/manifest.json', { cache: 'no-cache' })).json();
+// retried with a timeout: a stalled request on a flaky link would otherwise hang the page for good
+async function loadManifest() {
+  for (let n = 0; ; n++) {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), 15000);
+    try { const r = await fetch(BASE + 'data/manifest.json', { cache: 'no-cache', signal: c.signal }); if (!r.ok) throw new Error('manifest ' + r.status); return await r.json(); }
+    catch (e) { if (n >= 2) throw e; await new Promise(r => setTimeout(r, 800 * (n + 1))); }
+    finally { clearTimeout(t); }
+  }
+}
+const manifest = await loadManifest();
 const site = manifest.site || {};
 for (const i of manifest.items) {
   i.rail.src = abs(i.rail.src); i.full.src = abs(i.full.src); if (i.small) i.small.src = abs(i.small.src);
