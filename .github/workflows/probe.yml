@@ -1,0 +1,16 @@
+name: probe
+on: [push, workflow_dispatch]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          set +e
+          echo "== DNS"; dig +short milaharys.com A; dig +short milaharys.com AAAA; dig +short milaharys.com NS
+          echo "== https -4"; curl -4 -sv --max-time 20 https://milaharys.com/ -o /tmp/p.html 2>&1 | grep -E '^\*|^<|^>' | head -40
+          echo "== title/og"; grep -oE '<title>[^<]*|og:image" content="[^"]*|og:title" content="[^"]*' /tmp/p.html
+          echo "== https -6"; curl -6 -sS -I --max-time 20 https://milaharys.com/ 2>&1 | head -5
+          echo "== http"; curl -4 -sS -I --max-time 20 http://milaharys.com/ 2>&1 | head -5
+          echo "== og.jpg"; curl -4 -sS -I --max-time 20 https://milaharys.com/og.jpg 2>&1 | grep -iE 'HTTP|length|modified'
+          echo "== version"; curl -4 -sS --max-time 20 https://milaharys.com/data/version.txt
+          echo "== htaccess effect"; curl -4 -sS -I --max-time 20 -H 'Accept-Encoding: gzip' https://milaharys.com/data/manifest.json 2>&1 | grep -iE 'HTTP|encoding|cache-control'
