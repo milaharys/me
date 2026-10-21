@@ -1,6 +1,6 @@
 // Strip: photos packed into columns that fill the whole viewport, infinite horizontal scroll.
 // One transform per frame on the track; nodes keep static left/top and only hop by loopW when they wrap.
-import { pickTier, preloadImage, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=d134971a';
+import { pickTier, preloadImage, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=bd40e81e';
 
 export function createStrip({ items, stage, loop = true, loopIfWide = false, layout = 'scatter', swipeDown = false, maxTier = 'full', onOpen }) {
   let looping = loop;                      // a band loops too once it is wider than the screen
@@ -163,9 +163,10 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
     console.warn('media failed, removed:', node.item.id);
     live = live.filter(i => i !== node.item); base.delete(node.item); node.el.remove(); build(null);
   }
+  let slow = true;                         // the strip moves under ~8 px per frame: safe to start a video
   function playVideo(node, frac) {
     const m = node.media; if (!m || m.tagName !== 'VIDEO') return;
-    const should = frac >= 0.3 && active;
+    const should = frac >= 0.3 && active && (node.playing || slow);
     if (should && !node.playing) { node.playing = true; m.play().catch(() => {}); }
     else if (!should && node.playing) { node.playing = false; m.pause(); }
   }
@@ -183,7 +184,7 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
   function tick(now) {
     const dt = Math.max(0, Math.min(50, now - last || 16.67)); last = now;
     // glide: once the wheel goes quiet, the smoothed input speed keeps pushing the target and decays
-    if (inVel && now - lastInput > 40) { target += inVel * dt / 1000; inVel *= Math.pow(vw < 700 ? 0.00002 : 0.0009, dt / 1000); if (Math.abs(inVel) < 8) inVel = 0; }
+    if (inVel && now - lastInput > 40) { target += inVel * dt / 1000; inVel *= Math.pow(vw < 700 ? 0.00002 : 0.0002, dt / 1000); if (Math.abs(inVel) < 8) inVel = 0; }
     if (!looping) target = Math.max(0, Math.min(maxPos(), target));
     const phone = vw < 700;
     // a finger or a held mouse gets the content 1:1, no trailing; the wheel and the glide keep a touch of easing
@@ -195,6 +196,7 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
     track.style.transform = `translate3d(${(offsetX - pos).toFixed(2)}px,${dragY.toFixed(1)}px,0)`;
     const speed = Math.abs(target - pos);        // px still to travel: the faster the flick, the further we preload
     const ahead = vw * 1.25 + Math.min(vw * 4, speed * 1.5);
+    slow = speed < 8;
     const settled = !ptr && !inVel && speed < 2;   // the 2560px swaps wait for the strip to come to rest: decoding them mid-drag drops frames
     const lo = pos - pad, hi = pos + vw + pad;  // world window that may be on screen
     let bgNode = null, bgDist = Infinity;       // nearest frame that is not loaded yet
@@ -262,7 +264,7 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
   const endPtr = e => {
     if (!ptr || e.pointerId !== ptr.id) return;
     const s = ptr.samples;
-    if (s.length >= 2) { const a = s[0], b = s[s.length - 1]; const v = (b.p - a.p) / Math.max(1, b.t - a.t) * 1000; if (Math.abs(v) > 50 && vw < 700) { inVel = v * 0.45; lastInput = 0; } }
+    if (s.length >= 2) { const a = s[0], b = s[s.length - 1]; const v = (b.p - a.p) / Math.max(1, b.t - a.t) * 1000; if (Math.abs(v) > 50) { inVel = v * (vw < 700 ? 0.45 : 0.3); lastInput = 0; } }
     const { moved, hit, axis, sy } = ptr; ptr = null; stage.classList.remove('dragging'); run();
     suppressClick = true; setTimeout(() => { suppressClick = false; }, 0);
     if (swipeDown && axis === 'y') {
