@@ -313,7 +313,7 @@ async function findIcon() {
   for (const n of ['logo.svg', 'icon.png']) { const p = join(CONTENT, 'brand', n); if (existsSync(p)) return p; }
   return null;
 }
-async function buildBrandFromIcon(iconPath) {
+async function buildBrandFromIcon(iconPath, manifest = null) {
   const svg = iconPath.endsWith('.svg') ? await readFile(iconPath, 'utf8') : null;
   // vector rendered large, then scaled down; tab sizes take the bare shapes: the rough-edge filter turns to noise below ~64px
   const src = (clean) => svg ? sharp(Buffer.from(clean ? svg.replace(/\s+filter="url\([^)]*\)"/g, '') : svg), { density: 1200 }) : sharp(iconPath);
@@ -327,9 +327,39 @@ async function buildBrandFromIcon(iconPath) {
   // iOS needs an opaque square: the mark on white with air around it
   await sharp({ create: { width: 180, height: 180, channels: 3, background: '#FFFFFF' } }).composite([{ input: await at(140), gravity: 'centre' }]).png().toFile(join(PUB, 'apple-touch-icon.png'));
   const W = 1200, H = 630;
+  const parts = await ogStrip(manifest, W);
+  // with frames: the site's own strip across the top, the mark under it; without: the mark alone in the middle
+  const mark = parts.length ? { input: await at(200, 80), left: (W - 200) / 2, top: H - 130 } : { input: await at(760, 420), gravity: 'centre' };
   await sharp({ create: { width: W, height: H, channels: 3, background: '#FFFFFF' } })
-    .composite([{ input: await at(760, 420), gravity: 'centre' }])
-    .jpeg({ quality: 95, chromaSubsampling: '4:4:4' }).toFile(join(PUB, 'og.jpg'));   // black on white: low quality rings around the edges
+    .composite([...parts, mark])
+    .jpeg({ quality: 92, chromaSubsampling: '4:4:4' }).toFile(join(PUB, 'og.jpg'));   // black on white: low quality rings around the edges
+}
+// link preview strip: one portrait showcase frame from each of the first five shoots, glued edge to edge like the
+// phone strip, each its own height inside a band; the row is wider than the card and bleeds off both sides
+async function ogStrip(manifest, W) {
+  if (!manifest?.projects?.length) return [];
+  const byId = new Map(manifest.items.map(i => [i.id, i]));
+  const shoots = [...manifest.projects].sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9) || natural(a.title, b.title));
+  const picks = [];
+  for (const p of shoots) {
+    const it = p.items.map(id => byId.get(id)).find(i => i && i.type === 'photo' && i.showcase && i.h > i.w);
+    const f = it && join(PUB, it.rail.src.split('?')[0]);
+    if (f && existsSync(f)) picks.push({ it, f });
+    if (picks.length === 5) break;
+  }
+  if (picks.length < 3) return [];
+  const bandTop = 70, bandH = 400, scale = [0.92, 0.78, 1, 0.84, 0.95], drop = [0.2, 0.95, 0, 0.7, 0.35];
+  const sized = picks.map(({ it, f }, i) => { const h = Math.round(bandH * scale[i]); return { f, h, w: Math.round(h * it.w / it.h) }; });
+  let left = Math.round((W - sized.reduce((a, s) => a + s.w, 0)) / 2);
+  const parts = [];
+  for (const [i, s] of sized.entries()) {
+    const buf = await sharp(s.f).resize(s.w, s.h, { fit: 'cover' }).toBuffer();
+    // composite needs every piece inside the canvas: frames that bleed off an edge are cropped to it
+    const x0 = Math.max(0, left), x1 = Math.min(W, left + s.w);
+    if (x1 > x0) parts.push({ input: await sharp(buf).extract({ left: x0 - left, top: 0, width: x1 - x0, height: s.h }).toBuffer(), left: x0, top: bandTop + Math.round(drop[i] * (bandH - s.h)) });
+    left += s.w;
+  }
+  return parts;
 }
 
 // ---------- index.html: meta + noscript ----------
@@ -407,9 +437,9 @@ async function main() {
   const t0 = Date.now();
   if (!existsSync(SRC)) {   // a machine without the sources (code and text edits): icons, site.json into the manifest and meta tags, then the version so caches turn over
     const site = await readJSON(join(CONTENT, 'site.json'), {});
-    const icon = await findIcon(), seal = icon ? null : await findSeal();
-    if (icon) await buildBrandFromIcon(icon); else if (seal) await buildBrandFromSeal(seal, site);
     const manifestFile = join(PUB, 'data', 'manifest.json'), manifest = await readJSON(manifestFile, null);
+    const icon = await findIcon(), seal = icon ? null : await findSeal();
+    if (icon) await buildBrandFromIcon(icon, manifest); else if (seal) await buildBrandFromSeal(seal, site);
     if (manifest) {
       manifest.site = site;
       await writeJSON(manifestFile, manifest);
@@ -585,7 +615,7 @@ async function main() {
     frames.push(first.type === 'photo' ? join(MEDIA, 'rail', `${first.id}.webp`) : join(MEDIA, 'poster', `${first.id}-rail.webp`));
   }
   const icon = await findIcon(), seal = icon ? null : await findSeal();
-  if (icon) await buildBrandFromIcon(icon); else if (seal) await buildBrandFromSeal(seal, site); else if (frames.length) await buildBranding(frames, site);
+  if (icon) await buildBrandFromIcon(icon, manifest); else if (seal) await buildBrandFromSeal(seal, site); else if (frames.length) await buildBranding(frames, site);
   await writeJSON(join(PUB, 'data', 'manifest.json'), manifest);
   await injectHtml(site, manifest, byId);
   const codeV = await stampVersion();
