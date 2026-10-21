@@ -1,0 +1,12 @@
+name: probe
+on: [push]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          set +e
+          echo "version: $(curl -4 -sS --max-time 20 https://milaharys.com/data/version.txt)"
+          echo "title fix: $(curl -4 -sS --max-time 20 'https://milaharys.com/assets/js/main.js?v=bd40e81e' | grep -c 'role || site.name')"
+          echo "strip fix: $(curl -4 -sS --max-time 20 'https://milaharys.com/assets/js/strip.js?v=bd40e81e' | grep -c 'slow = speed')"
+          echo "AAAA: [$(dig +short milaharys.com AAAA @ns1.sprinthost.ru)]"
