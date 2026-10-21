@@ -1,6 +1,4 @@
-# Sprinthost (Apache). Every block is guarded: a module the server lacks is skipped, not a 500.
-AddDefaultCharset utf-8
-Options -Indexes
+# Sprinthost (Apache). Only module-guarded type, compression and cache rules: nothing here needs the Options override.
 
 <IfModule mod_mime.c>
   AddType text/javascript .js .mjs
