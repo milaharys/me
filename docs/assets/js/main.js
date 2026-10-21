@@ -1,14 +1,14 @@
-import { createStrip } from './strip.js?v=58d0aff4';
-import { createWardrobe } from './wardrobe.js?v=58d0aff4';
-import { createViewer } from './viewer.js?v=58d0aff4';
-import { onRoute, navigate, back, parse } from './router.js?v=58d0aff4';
-import { shuffle, esc } from './media.js?v=58d0aff4';
+import { createStrip } from './strip.js?v=d96c5234';
+import { createWardrobe } from './wardrobe.js?v=d96c5234';
+import { createViewer } from './viewer.js?v=d96c5234';
+import { onRoute, navigate, back, parse } from './router.js?v=d96c5234';
+import { shuffle, esc } from './media.js?v=d96c5234';
 
 // When embedded elsewhere (Tilda T123), window.MH_BASE points at the hosted folder; everything loads from there.
 const BASE = (window.MH_BASE || new URL('../../', import.meta.url).href).replace(/\/?$/, '/');
 const abs = u => (u && !/^(https?:)?\/\//.test(u) ? BASE + u : u);
-import { MARKUP } from './markup.js?v=58d0aff4';
-import { mountCredit } from './credit.js?v=58d0aff4';
+import { MARKUP } from './markup.js?v=d96c5234';
+import { mountCredit } from './credit.js?v=d96c5234';
 if (!document.getElementById('stage')) document.body.insertAdjacentHTML('beforeend', MARKUP);
 // retried with a timeout: a stalled request on a flaky link would otherwise hang the page for good
 async function loadManifest() {
@@ -106,7 +106,7 @@ const contactEl = $('#contact');
 
 // ---- strips
 const strip = createStrip({ items: selectionFor(picked), stage: $('#stage'), loop: true, layout: 'scatter', maxTier: innerWidth >= 1100 ? 'full' : 'rail', onOpen: item => navigate(`p/${item.projectObj.slug}`) });
-mountCredit({ homeStage: $('#stage'), galleryScroll: $('#wardrobe .scroll') });
+mountCredit({ galleryScroll: $('#wardrobe .scroll'), contact: $('#contact') });
 const projectStrip = createStrip({ items: [], stage: $('#project-stage'), loop: false, loopIfWide: true, layout: 'band', swipeDown: true, onOpen: item => navigate(`look/${item.id}`) });
 // wardrobe reads top to bottom from the oldest shoot to the newest; shoots without a year come first, in their folder order
 const byYear = manifest.projects.slice().sort((a, b) => (Number(a.year) || 0) - (Number(b.year) || 0));
