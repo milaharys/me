@@ -153,3 +153,16 @@ body.viewer-open .nav a{pointer-events:none}   /* the links keep their own point
 .v-bottom{padding-bottom:calc(20px + var(--sai-b))}
 .mh-fail{position:fixed;inset:auto 0 50% 0;z-index:100;margin:0;text-align:center;color:var(--ink)}
 .mh-fail a{text-decoration:underline}
+/* credit: "powered by" + the XTC mark; small and quiet, the letters wave on hover */
+.credit{display:flex;align-items:center;gap:9px;font-size:11px;line-height:16px;letter-spacing:.02em;color:var(--muted);user-select:none;-webkit-user-select:none}
+.credit-text{display:inline-flex;transition:color var(--t-2) var(--e-out)}
+.credit-text i{font-style:normal;display:inline-block;will-change:transform}
+.credit-mark{height:20px;width:auto;flex:none;color:var(--ink)}
+@media (hover:hover){ .credit:hover .credit-text{color:var(--ink)} }
+.credit-foot{justify-content:center;padding:24px 0 8px}
+.credit-home{position:fixed;right:calc(var(--gutter) + var(--sai-r));bottom:calc(22px + var(--sai-b));z-index:40;
+  opacity:0;transform:translate3d(0,14px,0);pointer-events:none;transition:opacity var(--t-3) var(--e-out),transform var(--t-3) var(--e-out)}
+body.credit-in .credit-home{opacity:1;transform:none;pointer-events:auto}
+body.project-open .credit-home,body.contact-open .credit-home,body.viewer-open .credit-home,body.wardrobe-open .credit-home{opacity:0;transform:translate3d(0,14px,0);pointer-events:none}
+@media (max-width:899px){ .credit-home{bottom:calc(12px + var(--sai-b))} .credit{gap:7px;font-size:10px} .credit-mark{height:17px} }
+@media (max-width:520px){ .credit-home{left:0;right:0;justify-content:center;bottom:calc(46px + var(--sai-b))} }

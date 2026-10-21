@@ -1,6 +1,6 @@
 // Strip: photos packed into columns that fill the whole viewport, infinite horizontal scroll.
 // One transform per frame on the track; nodes keep static left/top and only hop by loopW when they wrap.
-import { pickTier, preloadImage, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=bd40e81e';
+import { pickTier, preloadImage, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=58d0aff4';
 
 export function createStrip({ items, stage, loop = true, loopIfWide = false, layout = 'scatter', swipeDown = false, maxTier = 'full', onOpen }) {
   let looping = loop;                      // a band loops too once it is wider than the screen
@@ -163,6 +163,7 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
     console.warn('media failed, removed:', node.item.id);
     live = live.filter(i => i !== node.item); base.delete(node.item); node.el.remove(); build(null);
   }
+  let movedSent = false;
   let slow = true;                         // the strip moves under ~8 px per frame: safe to start a video
   function playVideo(node, frac) {
     const m = node.media; if (!m || m.tagName !== 'VIDEO') return;
@@ -194,6 +195,7 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
     dragY += (dragYTarget - dragY) * (1 - Math.pow(0.8, dt / 16.67));
     if (Math.abs(dragY - dragYTarget) < 0.1) dragY = dragYTarget;
     track.style.transform = `translate3d(${(offsetX - pos).toFixed(2)}px,${dragY.toFixed(1)}px,0)`;
+    if (!movedSent && Math.abs(pos) > 24) { movedSent = true; stage.dispatchEvent(new CustomEvent('moved')); }   // the first real move of this strip
     const speed = Math.abs(target - pos);        // px still to travel: the faster the flick, the further we preload
     const ahead = vw * 1.25 + Math.min(vw * 4, speed * 1.5);
     slow = speed < 8;
