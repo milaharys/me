@@ -387,6 +387,8 @@ async function stampVersion() {
   await writeFile(join(PUB, 'data', 'version.txt'), v + '\n');
   let html = await readFile(join(PUB, 'index.html'), 'utf8');
   html = html.replace(/assets\/style\.css(\?v=[a-z0-9]+)?/g, `assets/style.css?v=${v}`);
+  // the entry script too: the host caches .js for a week, and boot.js has no version of its own
+  html = html.replace(/assets\/js\/boot\.js(\?v=[a-z0-9]+)?/g, `assets/js/boot.js?v=${v}`);
   await writeFile(join(PUB, 'index.html'), html);
   return v;
 }
