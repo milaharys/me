@@ -1,6 +1,6 @@
 // Strip: photos packed into columns that fill the whole viewport, infinite horizontal scroll.
 // One transform per frame on the track; nodes keep static left/top and only hop by loopW when they wrap.
-import { pickTier, preloadImage, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=28040460';
+import { pickTier, preloadImage, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=d134971a';
 
 export function createStrip({ items, stage, loop = true, loopIfWide = false, layout = 'scatter', swipeDown = false, maxTier = 'full', onOpen }) {
   let looping = loop;                      // a band loops too once it is wider than the screen
@@ -147,7 +147,7 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
       if (!background && (node.visible || firstScreen)) img.fetchPriority = 'high';
       if (background) img.fetchPriority = 'low';
       img.src = (tier === 'full' ? item.rail : item[tier]).src; node.el.appendChild(img); node.media = img;
-      if (tier === 'full') { if (background) node.needFull = true; else upgrade(node); }
+      if (tier === 'full') node.needFull = true;   // the full version follows once the strip is at rest
     } else {
       const v = document.createElement('video');
       v.muted = true; v.playsInline = true; v.loop = true; v.preload = 'none'; v.className = 'media';
@@ -186,7 +186,8 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
     if (inVel && now - lastInput > 40) { target += inVel * dt / 1000; inVel *= Math.pow(vw < 700 ? 0.00002 : 0.0009, dt / 1000); if (Math.abs(inVel) < 8) inVel = 0; }
     if (!looping) target = Math.max(0, Math.min(maxPos(), target));
     const phone = vw < 700;
-    const lerp = REDUCED.matches ? 1 : phone ? 0.3 : 0.4;   // wide screens: a touch of easing (settles in about 100 ms), no glide
+    // a finger or a held mouse gets the content 1:1, no trailing; the wheel and the glide keep a touch of easing
+    const lerp = REDUCED.matches || ptr?.axis ? 1 : phone ? 0.3 : 0.4;   // wide screens: easing settles in about 100 ms, no glide
     if (lerp >= 1) pos = target; else pos += (target - pos) * (1 - Math.pow(1 - lerp, dt / 16.67));
     if (Math.abs(target - pos) < 0.05) pos = target;
     dragY += (dragYTarget - dragY) * (1 - Math.pow(0.8, dt / 16.67));
@@ -194,6 +195,7 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
     track.style.transform = `translate3d(${(offsetX - pos).toFixed(2)}px,${dragY.toFixed(1)}px,0)`;
     const speed = Math.abs(target - pos);        // px still to travel: the faster the flick, the further we preload
     const ahead = vw * 1.25 + Math.min(vw * 4, speed * 1.5);
+    const settled = !ptr && !inVel && speed < 2;   // the 2560px swaps wait for the strip to come to rest: decoding them mid-drag drops frames
     const lo = pos - pad, hi = pos + vw + pad;  // world window that may be on screen
     let bgNode = null, bgDist = Infinity;       // nearest frame that is not loaded yet
     const motion = [];                          // visible videos with their on-screen share; only the most visible play
@@ -209,7 +211,7 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
       const lx = looping && sx > vw * 2 ? sx - loopW : sx;
       const nearView = lx > -ahead && lx < ahead;
       if (!node.loaded && nearView) load(node);
-      else if (node.needFull && nearView) upgrade(node);
+      else if (node.needFull && nearView && settled) upgrade(node);
       else if (!node.loaded) { const d = Math.abs(lx + node.w / 2 - vw / 2); if (d < bgDist) { bgDist = d; bgNode = node; } }
       if (on) {
         if (!node.visible) { node.visible = true; node.el.classList.remove('off'); node.el.style.willChange = 'transform'; }
@@ -231,8 +233,8 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
 
   // ---------- input ----------
   let wheelPrev = 0;
-  addEventListener('wheel', e => {
-    if (!active || !(e.target instanceof Node) || !stage.contains(e.target)) return;
+  stage.addEventListener('wheel', e => {
+    if (!active) return;
     e.preventDefault();
     let d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
     if (e.deltaMode === 1) d *= 16; else if (e.deltaMode === 2) d *= vw;
@@ -253,7 +255,7 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
     if (!ptr.axis) { const tx = Math.abs(e.clientX - ptr.sx), ty = Math.abs(e.clientY - ptr.sy); if (Math.max(tx, ty) < 6) return; ptr.axis = tx >= ty ? 'x' : 'y'; }
     if (!ptr.moved && Math.hypot(e.clientX - ptr.sx, e.clientY - ptr.sy) > 6) { ptr.moved = true; stage.classList.add('dragging'); }
     if (ptr.axis === 'y' && swipeDown) { dragY = dragYTarget = Math.max(0, e.clientY - ptr.sy); }
-    else target -= ptr.axis === 'x' ? dx : dy;
+    else { target -= ptr.axis === 'x' ? dx : dy; pos = target; track.style.transform = `translate3d(${(offsetX - pos).toFixed(2)}px,${dragY.toFixed(1)}px,0)`; }   // written here, in the input's own frame: the content moves with the finger, the loop catches up with the rest
     ptr.x = e.clientX; ptr.y = e.clientY; run();
     ptr.samples.push({ t: e.timeStamp, p: target }); ptr.samples = ptr.samples.filter(s => e.timeStamp - s.t <= 100);
   });
