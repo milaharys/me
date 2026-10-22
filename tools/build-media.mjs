@@ -330,36 +330,52 @@ async function buildBrandFromIcon(iconPath, manifest = null) {
   await sharp({ create: { width: 180, height: 180, channels: 3, background: '#FFFFFF' } }).composite([{ input: await at(140), gravity: 'centre' }]).png().toFile(join(PUB, 'apple-touch-icon.png'));
   const W = 1200, H = 630;
   const parts = await ogScatter(manifest, W, H);
-  // with frames: the mark small in a clearing in the middle of the scatter; without: the mark alone, large
+  let card = await sharp({ create: { width: W, height: H, channels: 3, background: '#FFFFFF' } }).composite(parts).png().toBuffer();
+  if (parts.length) card = await barrel(card, W, H, 0.55);   // the crowd seen through a lens: edges bend away, the middle swells
+  // with frames: the mark small in the clearing, drawn after the lens so it stays straight; without: the mark alone, large
   const mark = parts.length ? { input: await at(120, 48), left: (W - 120) / 2, top: (H - 48) / 2 } : { input: await at(760, 420), gravity: 'centre' };
-  await sharp({ create: { width: W, height: H, channels: 3, background: '#FFFFFF' } })
-    .composite([...parts, mark])
-    .jpeg({ quality: 92, chromaSubsampling: '4:4:4' }).toFile(join(PUB, 'og.jpg'));   // black on white: low quality rings around the edges
+  await sharp(card).composite([mark]).jpeg({ quality: 92, chromaSubsampling: '4:4:4' }).toFile(join(PUB, 'og.jpg'));   // black on white: low quality rings around the edges
 }
 // link preview: a crowd of micro photos from the whole portfolio (archive aside), each its own size, scattered over the
-// card without touching, a clearing left in the middle for the mark. The shuffle is seeded by the set of photos, so the
-// card only changes when the portfolio does and messengers are not made to refetch it for nothing
+// card without touching, a clearing in the middle for the mark. The shuffle is seeded and depends only on the set of
+// photos, so the card changes only when the portfolio does and messengers are not made to refetch it for nothing
 async function ogScatter(manifest, W, H) {
   if (!manifest?.projects?.length) return [];
   const archived = new Set(manifest.projects.filter(p => /^archive$/i.test(String(p.category).trim())).flatMap(p => p.items));
   const pool = manifest.items.filter(i => i.type === 'photo' && !archived.has(i.id) && existsSync(join(PUB, i.rail.src.split('?')[0])));
   if (pool.length < 12) return [];
-  let a = parseInt(createHash('sha1').update(pool.map(i => i.id).sort().join()).digest('hex').slice(0, 8), 16);
+  let a = 7;   // the seed of the layout mila picked
   const rnd = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };   // mulberry32
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-  const gap = 6, pad = 14, clear = { x: (W - 120) / 2 - 34, y: (H - 48) / 2 - 26, w: 188, h: 100 };
+  const gap = 3, pad = 14, clear = { x: (W - 230) / 2, y: (H - 130) / 2, w: 230, h: 130 };
   const hit = (r, o) => r.x < o.x + o.w + gap && r.x + r.w + gap > o.x && r.y < o.y + o.h + gap && r.y + r.h + gap > o.y;
   const placed = [];
   for (const it of pool) {
-    const h = Math.round(26 + Math.pow(rnd(), 1.8) * 96), w = Math.round(h * it.w / it.h);   // mostly tiny, now and then a larger one
-    if (w > W / 3) continue;
-    for (let t = 0; t < 60; t++) {
+    const h = Math.round(18 + Math.pow(rnd(), 1.8) * 70), w = Math.round(h * it.w / it.h);   // mostly tiny, now and then a larger one
+    if (w > W / 2.5) continue;
+    for (let t = 0; t < 160; t++) {
       const r = { x: Math.round(pad + rnd() * (W - 2 * pad - w)), y: Math.round(pad + rnd() * (H - 2 * pad - h)), w, h };
       if (hit(r, clear) || placed.some(o => hit(r, o))) continue;
       placed.push({ ...r, f: join(PUB, it.rail.src.split('?')[0]) }); break;
     }
   }
   return Promise.all(placed.map(async p => ({ input: await sharp(p.f).resize(p.w, p.h, { fit: 'cover' }).toBuffer(), left: p.x, top: p.y })));
+}
+// barrel distortion with bilinear sampling; outside the bent picture stays paper white
+async function barrel(png, W, H, k) {
+  const { data, info } = await sharp(png).raw().toBuffer({ resolveWithObject: true });
+  const C = info.channels, out = Buffer.alloc(data.length, 255), cx = W / 2, cy = H / 2, R = Math.hypot(cx, cy), norm = 1 + k * 0.35;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const dx = (x - cx) / R, dy = (y - cy) / R, f = (1 + k * (dx * dx + dy * dy)) / norm;
+    const sx = cx + dx * f * R, sy = cy + dy * f * R;
+    if (sx < 0 || sy < 0 || sx >= W - 1 || sy >= H - 1) continue;
+    const x0 = sx | 0, y0 = sy | 0, fx = sx - x0, fy = sy - y0, o = (y * W + x) * C;
+    for (let c = 0; c < C; c++) {
+      const i = (y0 * W + x0) * C + c;
+      out[o + c] = (data[i] * (1 - fx) + data[i + C] * fx) * (1 - fy) + (data[i + W * C] * (1 - fx) + data[i + W * C + C] * fx) * fy;
+    }
+  }
+  return sharp(out, { raw: { width: W, height: H, channels: C } }).png().toBuffer();
 }
 
 // ---------- index.html: meta + noscript ----------
