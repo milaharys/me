@@ -12,12 +12,14 @@
     "gallery": "gallery",
     "contact": "contact",
     "model": "modeling",
-    "styling": "styling"
+    "styling": "styling",
+    "archive": "archive"
   },
   "categories": {
     "styling": "styling",
     "modeling": "modeling",
-    "artdir + styling": "art direction + styling"
+    "artdir + styling": "art direction + styling",
+    "archive": "archive"
   },
   "roles": {
     "modeling": "model",

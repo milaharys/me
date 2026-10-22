@@ -1,9 +1,9 @@
 // Wardrobe: every work, by project, justified rows, lazy HQ loading. With a role picked, only that side of the work.
-import { pickTier, esc, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=a8672917';
+import { pickTier, esc, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=e1223425';
 
 export function createWardrobe({ el, projects, role = null, onOpen }) {
   const scroll = el.querySelector('.scroll');
-  const sectionsEl = el.querySelector('#sections');
+  const sectionsEl = el.querySelector('#sections, .sections');   // the gallery has the id, the archive the class
   let open = false, builtWidth = 0, dirty = false, swapId = 0;
   const W_OUT = [{ opacity: 0, filter: 'blur(8px)' }];
   const W_IN = [{ opacity: 0, filter: 'blur(8px)' }, { opacity: 1, filter: 'blur(0px)' }];

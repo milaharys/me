@@ -13,6 +13,12 @@ export const MARKUP = `<div class="mh-bg" aria-hidden="true"></div>
   </div>
 </section>
 
+<section id="archive" class="layer wardrobe archive" aria-label="archive">
+  <div class="scroll">
+    <div class="sections"></div>
+  </div>
+</section>
+
 <section id="contact" class="contact" aria-label="contact">
   <div class="info" id="contact-body"></div>
 </section>
@@ -20,6 +26,7 @@ export const MARKUP = `<div class="mh-bg" aria-hidden="true"></div>
 <nav class="nav" aria-label="site">
   <a href="#/contact" id="nav-contact">contact</a>
   <a href="#/gallery" id="nav-gallery">gallery</a>
+  <a href="#/archive" id="nav-archive" hidden>archive</a>
 </nav>
 <nav class="roles" aria-label="work">
   <a href="#/model" id="nav-model">modeling</a>

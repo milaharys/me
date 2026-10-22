@@ -1,14 +1,14 @@
-import { createStrip } from './strip.js?v=a8672917';
-import { createWardrobe } from './wardrobe.js?v=a8672917';
-import { createViewer } from './viewer.js?v=a8672917';
-import { onRoute, navigate, back, parse } from './router.js?v=a8672917';
-import { shuffle, esc } from './media.js?v=a8672917';
+import { createStrip } from './strip.js?v=e1223425';
+import { createWardrobe } from './wardrobe.js?v=e1223425';
+import { createViewer } from './viewer.js?v=e1223425';
+import { onRoute, navigate, back, parse } from './router.js?v=e1223425';
+import { shuffle, esc } from './media.js?v=e1223425';
 
 // When embedded elsewhere (Tilda T123), window.MH_BASE points at the hosted folder; everything loads from there.
 const BASE = (window.MH_BASE || new URL('../../', import.meta.url).href).replace(/\/?$/, '/');
 const abs = u => (u && !/^(https?:)?\/\//.test(u) ? BASE + u : u);
-import { MARKUP } from './markup.js?v=a8672917';
-import { mountCredit } from './credit.js?v=a8672917';
+import { MARKUP } from './markup.js?v=e1223425';
+import { mountCredit } from './credit.js?v=e1223425';
 if (!document.getElementById('stage')) document.body.insertAdjacentHTML('beforeend', MARKUP);
 // retried with a timeout: a stalled request on a flaky link would otherwise hang the page for good
 async function loadManifest() {
@@ -33,6 +33,10 @@ for (const p of manifest.projects) {
   projectsBySlug.set(p.slug, p);
 }
 
+// ---- archive: shoots in the "archive" category live only in their own tab, never on the strip or in the gallery
+const isArchive = p => /^archive$/i.test(p.category);
+const current = manifest.projects.filter(p => !isArchive(p)), archived = manifest.projects.filter(isArchive);
+
 // ---- roles: every work is either mila in front of the camera (model) or her styling on someone else (styling)
 const ROLES = ['model', 'styling'];
 let picked = parse().name === 'role' ? parse().role : null;   // null — everything
@@ -40,8 +44,8 @@ const ofRole = (p, r = picked) => r ? p.itemObjs.filter(i => i.role === r) : p.i
 const home = () => picked || '';                               // where closing a layer lands: the strip as it was filtered
 
 // ---- this visit: ordered projects first, the rest shuffled; 3–4 random works from each, in project order
-const ordered = manifest.projects.filter(p => Number.isInteger(p.order)).sort((a, b) => a.order - b.order);
-const visit = [...ordered, ...shuffle(manifest.projects.filter(p => !Number.isInteger(p.order)))];
+const ordered = current.filter(p => Number.isInteger(p.order)).sort((a, b) => a.order - b.order);
+const visit = [...ordered, ...shuffle(current.filter(p => !Number.isInteger(p.order)))];
 const maxPer = Math.max(1, site.stripMax ?? 4), minPer = Math.max(1, Math.min(maxPer, site.stripMin ?? 3));
 function pick(p, r) {
   const mine = ofRole(p, r);
@@ -86,9 +90,10 @@ function selectionFor(r) {
 
 // ---- chrome
 const $ = s => document.querySelector(s);
-const navGallery = $('#nav-gallery'), navContact = $('#nav-contact');
+const navGallery = $('#nav-gallery'), navContact = $('#nav-contact'), navArchive = $('#nav-archive');
 const labelGallery = site.labels?.gallery || 'gallery', labelContact = site.labels?.contact || 'contact';
 navGallery.textContent = labelGallery; navContact.textContent = labelContact;
+navArchive.textContent = site.labels?.archive || 'archive'; navArchive.hidden = !archived.length;   // the word appears with the first archived shoot
 const tidy = s => (s && /^TODO/i.test(s)) ? s.replace(/^TODO:?\s*/i, '') : (s || '');
 const role = tidy(site.role);
 document.title = role || site.name;   // the tab and link previews carry the roles only, as the meta tags do
@@ -109,12 +114,14 @@ const strip = createStrip({ items: selectionFor(picked), stage: $('#stage'), loo
 mountCredit({ galleryScroll: $('#wardrobe .scroll') });
 const projectStrip = createStrip({ items: [], stage: $('#project-stage'), loop: false, loopIfWide: true, layout: 'band', swipeDown: true, onOpen: item => navigate(`look/${item.id}`) });
 // wardrobe reads top to bottom from the oldest shoot to the newest; shoots without a year come first, in their folder order
-const byYear = manifest.projects.slice().sort((a, b) => (Number(a.year) || 0) - (Number(b.year) || 0));
-const wardrobe = createWardrobe({ el: $('#wardrobe'), projects: byYear, role: picked, onOpen: item => navigate(`look/${item.id}`) });
+const byYear = list => list.slice().sort((a, b) => (Number(a.year) || 0) - (Number(b.year) || 0));
+const wardrobe = createWardrobe({ el: $('#wardrobe'), projects: byYear(current), role: picked, onOpen: item => navigate(`look/${item.id}`) });
+// the archive reads the same way, whole shoots, without the model / styling filter
+const archive = createWardrobe({ el: $('#archive'), projects: byYear(archived), onOpen: item => navigate(`look/${item.id}`) });
 const viewer = createViewer({
   el: $('#viewer'), railRectOf: () => null, setTaken: () => {}, centerRail: () => {}, isOnRail: () => false,
   onNavigate: item => navigate(`look/${item.id}`, { replace: true }),
-  onClose: () => back(layerOpen === 'wardrobe' ? 'gallery' : layerOpen === 'project' ? `p/${currentProject?.slug}` : home()),
+  onClose: () => back(layerOpen === 'wardrobe' ? 'gallery' : layerOpen === 'archive' ? 'archive' : layerOpen === 'project' ? `p/${currentProject?.slug}` : home()),
 });
 
 // ---- model / styling: tap a word to see only that side of the work, tap it again for everything
@@ -141,11 +148,12 @@ paintRoles();
 
 // ---- layers
 let layerOpen = null, currentProject = null, currentItems = [], currentKey = '';
-const layers = { project: $('#project'), wardrobe: $('#wardrobe'), contact: contactEl };
+const layers = { project: $('#project'), wardrobe: $('#wardrobe'), archive: $('#archive'), contact: contactEl };
 // the open word leads back to the strip, filtered as it was
 function paintNav() {
   navGallery.setAttribute('href', layerOpen === 'wardrobe' ? '#/' + home() : '#/gallery');
   navContact.setAttribute('href', layerOpen === 'contact' ? '#/' + home() : '#/contact');
+  navArchive.setAttribute('href', layerOpen === 'archive' ? '#/' + home() : '#/archive');
 }
 function showLayer(which) {
   for (const [k, el] of Object.entries(layers)) el.classList.toggle('open', k === which);   // a closed layer stays laid out, only invisible
@@ -153,10 +161,11 @@ function showLayer(which) {
   document.body.classList.toggle('layer-open', !!which);
   document.body.classList.toggle('project-open', which === 'project');
   document.body.classList.toggle('contact-open', which === 'contact');
-  document.body.classList.toggle('wardrobe-open', which === 'wardrobe');
+  document.body.classList.toggle('wardrobe-open', which === 'wardrobe' || which === 'archive');   // the archive is a gallery too: same chrome
   paintNav();
   navGallery.classList.toggle('on', which === 'wardrobe');
   navContact.classList.toggle('on', which === 'contact');
+  navArchive.classList.toggle('on', which === 'archive');
 }
 function openProject(p) {
   // with a role picked, a shoot shows only that side of it (a shoot with none of it shows everything)
@@ -165,7 +174,7 @@ function openProject(p) {
   const t = $('#p-title'); t.textContent = p.title; if (p.year) { const y = document.createElement('span'); y.className = 'yr'; y.textContent = p.year; t.appendChild(y); }
   if (p.link) { t.href = p.link; t.target = '_blank'; t.rel = 'noopener'; t.classList.add('linked'); }
   else { t.removeAttribute('href'); t.removeAttribute('target'); t.classList.remove('linked'); }
-  showLayer('project'); wardrobe.close(); strip.pause();
+  showLayer('project'); wardrobe.close(); archive.close(); strip.pause();
   projectStrip.resume(); if (!projectStrip.active) projectStrip.start();
 }
 
@@ -175,7 +184,7 @@ onRoute(route => {
     const item = itemsById.get(route.id);
     if (!item) { navigate('', { replace: true }); return; }
     if (viewer.isOpen) { viewer.show(item); return; }
-    let list = layerOpen === 'wardrobe' ? wardrobe.currentList() : layerOpen === 'project' ? currentItems : ofRole(item.projectObj);
+    let list = layerOpen === 'wardrobe' ? wardrobe.currentList() : layerOpen === 'archive' ? archive.currentList() : layerOpen === 'project' ? currentItems : ofRole(item.projectObj);
     if (!list.some(i => i.id === item.id)) list = item.projectObj.itemObjs;
     if (layerOpen === 'contact') showLayer(null);
     viewer.open(item, list, { source: 'wardrobe' });
@@ -187,9 +196,11 @@ onRoute(route => {
   if (route.name === 'rail' && location.hash.replace(/^#\/?/, '')) { navigate('', { replace: true }); return; }
   if (route.name === 'role') setRole(route.role);
   projectStrip.pause();
-  if (route.name === 'wardrobe') { showLayer('wardrobe'); wardrobe.open(route.slug); strip.pause(); }
-  else if (route.name === 'contact') { showLayer('contact'); wardrobe.close(); strip.resume(); }
-  else { showLayer(null); wardrobe.close(); strip.resume(); }
+  if (route.name === 'wardrobe') { showLayer('wardrobe'); wardrobe.open(route.slug); archive.close(); strip.pause(); }
+  else if (route.name === 'archive' && archived.length) { showLayer('archive'); archive.open(route.slug); wardrobe.close(); strip.pause(); }
+  else if (route.name === 'archive') { navigate('', { replace: true }); }
+  else if (route.name === 'contact') { showLayer('contact'); wardrobe.close(); archive.close(); strip.resume(); }
+  else { showLayer(null); wardrobe.close(); archive.close(); strip.resume(); }
 });
 addEventListener('keydown', e => { if (e.key === 'Escape' && !viewer.isOpen && layerOpen) back(home()); if (e.key === 'Tab') document.body.classList.add('kb'); });
 addEventListener('pointerdown', () => document.body.classList.remove('kb'), true);
@@ -199,5 +210,5 @@ $('#project-stage').addEventListener('tapout', closeProject);
 $('#project-stage').addEventListener('swipedown', closeProject);
 $('#p-title').addEventListener('click', e => { if (!currentProject?.link) { e.preventDefault(); closeProject(); } });
 // the gallery's rows are laid out while nobody looks, so opening it is only a fade
-(window.requestIdleCallback || (f => setTimeout(f, 800)))(() => wardrobe.prepare());
+(window.requestIdleCallback || (f => setTimeout(f, 800)))(() => { wardrobe.prepare(); if (archived.length) archive.prepare(); });
 window.__strip = strip; window.__pstrip = projectStrip;

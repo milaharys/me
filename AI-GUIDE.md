@@ -18,9 +18,10 @@ docs/                   ← САМ САЙТ. Ровно это лежит на �
   assets/js/            логика (ES-модули, подключаются с ?v=<версия>)
     boot.js             старт
     main.js             главный экран, переключение разделов
-    router.js           адреса: '' (главная), #/model, #/styling, #/gallery, #/gallery/<съёмка>, #/look/<id>, #/contact
+    router.js           адреса: '' (главная), #/model, #/styling, #/gallery, #/gallery/<съёмка>, #/archive, #/look/<id>, #/contact
     strip.js            лента кадров на главной
-    wardrobe.js         раздел gallery (все съёмки)
+    wardrobe.js         разделы gallery и archive (сетка съёмок)
+    credit.js           «powered by» с логотипом XTC внизу gallery
     viewer.js           полноэкранный просмотр кадра
     media.js            загрузка фото/видео
     markup.js           HTML-разметка интерфейса
@@ -53,6 +54,7 @@ media-src/              исходники фото — ТОЛЬКО на ком
 media-src/<категория>/<съёмка>/<файлы>
 ```
 - Категории: `modeling`, `styling`, `artdir + styling` (подписи и роли — в `content/site.json` → `categories`, `roles`).
+- Категория **`archive`** (`media-src/archive/<съёмка>/`) — съёмки только во вкладке archive: их нет ни на главной, ни в gallery. Ссылка archive в меню появляется сама, когда в архиве есть хоть одна съёмка.
 - Год в конце имени папки датирует съёмку: `Nasty 24`, `Nasty '24`, `Nasty (2024)`.
 - `_текст_` в имени папки → «текст» в кавычках в названии.
 - **`!`** в имени файла — кадр попадает на главную ленту. `!` на папке съёмки — вся съёмка на главной (если внутри нет файлов со своим `!`).
@@ -70,6 +72,7 @@ media-src/<категория>/<съёмка>/<файлы>
 | Поведение (лента, просмотр, меню) | нужный файл в `docs/assets/js/` |
 | Логотип / фавикон | заменить `content/brand/logo.svg` → `npm run media` |
 | Добавить или убрать фото | только на компьютере Милы: `media-src/` → `npm run media` |
+| Отправить съёмку в archive | перенести её папку в `media-src/archive/` → `npm run media` |
 
 ## Правила
 
