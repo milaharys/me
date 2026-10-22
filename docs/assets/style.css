@@ -48,6 +48,10 @@ body.project-open .roles,body.contact-open .roles,body.viewer-open .roles,body.w
 body.project-open .roles a,body.contact-open .roles a,body.viewer-open .roles a,body.wardrobe-open .roles a{pointer-events:none}
 /* gallery: nothing above the first shoot but air; on a phone the photos run edge to edge, the names keep a small gutter */
 .layer.wardrobe .scroll{padding-top:calc(40px + var(--sai-t))}
+/* the paper rises under the bottom words: photos and shoot names scrolling beneath fade out instead of colliding with them */
+.layer.wardrobe::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(84px + var(--sai-b));z-index:1;pointer-events:none;
+  background:linear-gradient(to top,var(--paper) 0,var(--paper) 42%,rgba(255,255,255,0) 100%)}
+@media (max-width:899px){ .layer.wardrobe::after{height:calc(66px + var(--sai-b))} }
 @media (max-width:899px){ .layer.wardrobe .scroll{padding:calc(28px + var(--sai-t)) 0 calc(96px + var(--sai-b))} }
 /* switching roles: the new frames wait unseen until the first screen has decoded, then land */
 .stage.arriving .pic{opacity:0}

@@ -421,6 +421,12 @@ async function stampVersion() {
   html = html.replace(/assets\/style\.css(\?v=[a-z0-9]+)?/g, `assets/style.css?v=${v}`);
   // the entry script too: the host caches .js for a week, and boot.js has no version of its own
   html = html.replace(/assets\/js\/boot\.js(\?v=[a-z0-9]+)?/g, `assets/js/boot.js?v=${v}`);
+  // icons keep their names between builds and browsers hold them for weeks: each link carries its own file's hash
+  for (const f of ['favicon.ico', 'favicon.png', 'apple-touch-icon.png']) {
+    if (!existsSync(join(PUB, f))) continue;
+    const iv = createHash('sha1').update(await readFile(join(PUB, f))).digest('hex').slice(0, 8);
+    html = html.replace(new RegExp(`href="${f.replace('.', '\\.')}(\\?v=[a-z0-9]+)?"`, 'g'), `href="${f}?v=${iv}"`);
+  }
   await writeFile(join(PUB, 'index.html'), html);
   return v;
 }
