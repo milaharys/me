@@ -1,14 +1,14 @@
-import { createStrip } from './strip.js?v=e1223425';
-import { createWardrobe } from './wardrobe.js?v=e1223425';
-import { createViewer } from './viewer.js?v=e1223425';
-import { onRoute, navigate, back, parse } from './router.js?v=e1223425';
-import { shuffle, esc } from './media.js?v=e1223425';
+import { createStrip } from './strip.js?v=1053ef76';
+import { createWardrobe } from './wardrobe.js?v=1053ef76';
+import { createViewer } from './viewer.js?v=1053ef76';
+import { onRoute, navigate, back, parse } from './router.js?v=1053ef76';
+import { shuffle, esc } from './media.js?v=1053ef76';
 
 // When embedded elsewhere (Tilda T123), window.MH_BASE points at the hosted folder; everything loads from there.
 const BASE = (window.MH_BASE || new URL('../../', import.meta.url).href).replace(/\/?$/, '/');
 const abs = u => (u && !/^(https?:)?\/\//.test(u) ? BASE + u : u);
-import { MARKUP } from './markup.js?v=e1223425';
-import { mountCredit } from './credit.js?v=e1223425';
+import { MARKUP } from './markup.js?v=1053ef76';
+import { mountCredit } from './credit.js?v=1053ef76';
 if (!document.getElementById('stage')) document.body.insertAdjacentHTML('beforeend', MARKUP);
 // retried with a timeout: a stalled request on a flaky link would otherwise hang the page for good
 async function loadManifest() {
@@ -34,7 +34,7 @@ for (const p of manifest.projects) {
 }
 
 // ---- archive: shoots in the "archive" category live only in their own tab, never on the strip or in the gallery
-const isArchive = p => /^archive$/i.test(p.category);
+const isArchive = p => /^archive$/i.test(String(p.category).trim());
 const current = manifest.projects.filter(p => !isArchive(p)), archived = manifest.projects.filter(isArchive);
 
 // ---- roles: every work is either mila in front of the camera (model) or her styling on someone else (styling)

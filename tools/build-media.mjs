@@ -341,7 +341,7 @@ async function buildBrandFromIcon(iconPath, manifest = null) {
 async function ogStrip(manifest, W) {
   if (!manifest?.projects?.length) return [];
   const byId = new Map(manifest.items.map(i => [i.id, i]));
-  const shoots = [...manifest.projects].sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9) || natural(a.title, b.title));
+  const shoots = manifest.projects.filter(p => !/^archive$/i.test(String(p.category).trim())).sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9) || natural(a.title, b.title));
   const picks = [];
   for (const p of shoots) {
     const it = p.items.map(id => byId.get(id)).find(i => i && i.type === 'photo' && i.showcase && i.h > i.w);
@@ -592,7 +592,8 @@ async function main() {
     const railCount = Number.isInteger(pm.railCount) ? pm.railCount : (site.railPerProject ?? 6);
     const items = p.visible.map(it => it.id);
     items.forEach((id, i) => { byId.get(id).onRail = i < railCount; });
-    manifest.projects.push({ slug: p.slug, title: p.displayTitle, category: p.category, categoryLabel: site.categories?.[p.category] ?? p.category,
+    const cat = p.category.replace(/\s+/g, ' ').trim();   // a stray space in a folder name ("archive ") must not make a new category
+    manifest.projects.push({ slug: p.slug, title: p.displayTitle, category: cat, categoryLabel: site.categories?.[cat] ?? cat,
       credits: pm.credits || '', link: (pm.link || '').trim(), year: String(pm.year ?? '').trim(), order: Number.isInteger(pm.order) ? pm.order : null, count: items.length, items });
   }
   manifest.items = results;
