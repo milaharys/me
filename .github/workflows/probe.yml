@@ -1,0 +1,16 @@
+name: probe
+on: [push]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          set +e
+          UA='TelegramBot (like TwitterBot)'
+          for u in https://milaharys.com https://milaharys.com/ http://milaharys.com/ https://www.milaharys.com/; do
+            echo "== $u (telegram UA)"; curl -sS -L --max-time 20 -A "$UA" -D /tmp/h "$u" -o /tmp/b; grep -iE '^HTTP|^location|^server|^cache|^x-' /tmp/h; grep -oE '<title>[^<]*|og:image" content="[^"]*|og:title" content="[^"]*' /tmp/b
+          done
+          echo "== browser UA"; curl -sS --max-time 20 https://milaharys.com/ | grep -oE '<title>[^<]*|og:image" content="[^"]*'
+          echo "== og.jpg"; curl -sS -I --max-time 20 -A "$UA" 'https://milaharys.com/og.jpg?v=93908195' | grep -iE '^HTTP|length|type|modified'
+          echo "== dns"; dig +short milaharys.com A; dig +short milaharys.com AAAA; dig +short www.milaharys.com A
+          echo "== version"; curl -sS https://milaharys.com/data/version.txt
