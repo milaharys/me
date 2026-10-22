@@ -1,14 +1,14 @@
-import { createStrip } from './strip.js?v=abf86d44';
-import { createWardrobe } from './wardrobe.js?v=abf86d44';
-import { createViewer } from './viewer.js?v=abf86d44';
-import { onRoute, navigate, back, parse } from './router.js?v=abf86d44';
-import { shuffle, esc } from './media.js?v=abf86d44';
+import { createStrip } from './strip.js?v=da4cae59';
+import { createWardrobe } from './wardrobe.js?v=da4cae59';
+import { createViewer } from './viewer.js?v=da4cae59';
+import { onRoute, navigate, back, parse } from './router.js?v=da4cae59';
+import { shuffle, esc } from './media.js?v=da4cae59';
 
 // When embedded elsewhere (Tilda T123), window.MH_BASE points at the hosted folder; everything loads from there.
 const BASE = (window.MH_BASE || new URL('../../', import.meta.url).href).replace(/\/?$/, '/');
 const abs = u => (u && !/^(https?:)?\/\//.test(u) ? BASE + u : u);
-import { MARKUP } from './markup.js?v=abf86d44';
-import { mountCredit } from './credit.js?v=abf86d44';
+import { MARKUP } from './markup.js?v=da4cae59';
+import { mountCredit } from './credit.js?v=da4cae59';
 if (!document.getElementById('stage')) document.body.insertAdjacentHTML('beforeend', MARKUP);
 // retried with a timeout: a stalled request on a flaky link would otherwise hang the page for good
 async function loadManifest() {
@@ -111,13 +111,13 @@ const contactEl = $('#contact');
 
 // ---- strips
 const strip = createStrip({ items: selectionFor(picked), stage: $('#stage'), loop: true, layout: 'scatter', maxTier: innerWidth >= 1100 ? 'full' : 'rail', onOpen: item => navigate(`p/${item.projectObj.slug}`) });
-mountCredit({ galleryScroll: $('#wardrobe .scroll') });
 const projectStrip = createStrip({ items: [], stage: $('#project-stage'), loop: false, loopIfWide: true, layout: 'band', swipeDown: true, onOpen: item => navigate(`look/${item.id}`) });
 // wardrobe reads top to bottom from the oldest shoot to the newest; shoots without a year come first, in their folder order
 const byYear = list => list.slice().sort((a, b) => (Number(a.year) || 0) - (Number(b.year) || 0));
 const wardrobe = createWardrobe({ el: $('#wardrobe'), projects: byYear(current), role: picked, onOpen: item => navigate(`look/${item.id}`) });
 // the archive reads the same way, whole shoots, without the model / styling filter
 const archive = createWardrobe({ el: $('#archive'), projects: byYear(archived), onOpen: item => navigate(`look/${item.id}`) });
+mountCredit([$('#wardrobe .scroll'), $('#archive .scroll')]);
 const viewer = createViewer({
   el: $('#viewer'), railRectOf: () => null, setTaken: () => {}, centerRail: () => {}, isOnRail: () => false,
   onNavigate: item => navigate(`look/${item.id}`, { replace: true }),
