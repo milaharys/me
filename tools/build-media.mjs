@@ -329,39 +329,37 @@ async function buildBrandFromIcon(iconPath, manifest = null) {
   // iOS needs an opaque square: the mark on white with air around it
   await sharp({ create: { width: 180, height: 180, channels: 3, background: '#FFFFFF' } }).composite([{ input: await at(140), gravity: 'centre' }]).png().toFile(join(PUB, 'apple-touch-icon.png'));
   const W = 1200, H = 630;
-  const parts = await ogStrip(manifest, W);
-  // with frames: the site's own strip across the top, the mark under it; without: the mark alone in the middle
-  const mark = parts.length ? { input: await at(200, 80), left: (W - 200) / 2, top: H - 130 } : { input: await at(760, 420), gravity: 'centre' };
+  const parts = await ogScatter(manifest, W, H);
+  // with frames: the mark small in a clearing in the middle of the scatter; without: the mark alone, large
+  const mark = parts.length ? { input: await at(120, 48), left: (W - 120) / 2, top: (H - 48) / 2 } : { input: await at(760, 420), gravity: 'centre' };
   await sharp({ create: { width: W, height: H, channels: 3, background: '#FFFFFF' } })
     .composite([...parts, mark])
     .jpeg({ quality: 92, chromaSubsampling: '4:4:4' }).toFile(join(PUB, 'og.jpg'));   // black on white: low quality rings around the edges
 }
-// link preview strip: one portrait showcase frame from each of the first five shoots, glued edge to edge like the
-// phone strip, each its own height inside a band; the row is wider than the card and bleeds off both sides
-async function ogStrip(manifest, W) {
+// link preview: a crowd of micro photos from the whole portfolio (archive aside), each its own size, scattered over the
+// card without touching, a clearing left in the middle for the mark. The shuffle is seeded by the set of photos, so the
+// card only changes when the portfolio does and messengers are not made to refetch it for nothing
+async function ogScatter(manifest, W, H) {
   if (!manifest?.projects?.length) return [];
-  const byId = new Map(manifest.items.map(i => [i.id, i]));
-  const shoots = manifest.projects.filter(p => !/^archive$/i.test(String(p.category).trim())).sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9) || natural(a.title, b.title));
-  const picks = [];
-  for (const p of shoots) {
-    const it = p.items.map(id => byId.get(id)).find(i => i && i.type === 'photo' && i.showcase && i.h > i.w);
-    const f = it && join(PUB, it.rail.src.split('?')[0]);
-    if (f && existsSync(f)) picks.push({ it, f });
-    if (picks.length === 5) break;
+  const archived = new Set(manifest.projects.filter(p => /^archive$/i.test(String(p.category).trim())).flatMap(p => p.items));
+  const pool = manifest.items.filter(i => i.type === 'photo' && !archived.has(i.id) && existsSync(join(PUB, i.rail.src.split('?')[0])));
+  if (pool.length < 12) return [];
+  let a = parseInt(createHash('sha1').update(pool.map(i => i.id).sort().join()).digest('hex').slice(0, 8), 16);
+  const rnd = () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };   // mulberry32
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  const gap = 6, pad = 14, clear = { x: (W - 120) / 2 - 34, y: (H - 48) / 2 - 26, w: 188, h: 100 };
+  const hit = (r, o) => r.x < o.x + o.w + gap && r.x + r.w + gap > o.x && r.y < o.y + o.h + gap && r.y + r.h + gap > o.y;
+  const placed = [];
+  for (const it of pool) {
+    const h = Math.round(26 + Math.pow(rnd(), 1.8) * 96), w = Math.round(h * it.w / it.h);   // mostly tiny, now and then a larger one
+    if (w > W / 3) continue;
+    for (let t = 0; t < 60; t++) {
+      const r = { x: Math.round(pad + rnd() * (W - 2 * pad - w)), y: Math.round(pad + rnd() * (H - 2 * pad - h)), w, h };
+      if (hit(r, clear) || placed.some(o => hit(r, o))) continue;
+      placed.push({ ...r, f: join(PUB, it.rail.src.split('?')[0]) }); break;
+    }
   }
-  if (picks.length < 3) return [];
-  const bandTop = 70, bandH = 400, scale = [0.92, 0.78, 1, 0.84, 0.95], drop = [0.2, 0.95, 0, 0.7, 0.35];
-  const sized = picks.map(({ it, f }, i) => { const h = Math.round(bandH * scale[i]); return { f, h, w: Math.round(h * it.w / it.h) }; });
-  let left = Math.round((W - sized.reduce((a, s) => a + s.w, 0)) / 2);
-  const parts = [];
-  for (const [i, s] of sized.entries()) {
-    const buf = await sharp(s.f).resize(s.w, s.h, { fit: 'cover' }).toBuffer();
-    // composite needs every piece inside the canvas: frames that bleed off an edge are cropped to it
-    const x0 = Math.max(0, left), x1 = Math.min(W, left + s.w);
-    if (x1 > x0) parts.push({ input: await sharp(buf).extract({ left: x0 - left, top: 0, width: x1 - x0, height: s.h }).toBuffer(), left: x0, top: bandTop + Math.round(drop[i] * (bandH - s.h)) });
-    left += s.w;
-  }
-  return parts;
+  return Promise.all(placed.map(async p => ({ input: await sharp(p.f).resize(p.w, p.h, { fit: 'cover' }).toBuffer(), left: p.x, top: p.y })));
 }
 
 // ---------- index.html: meta + noscript ----------
