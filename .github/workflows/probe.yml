@@ -1,0 +1,35 @@
+name: probe
+on: [push]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          set +e
+          API=https://api.globalping.io/v1/measurements
+          run() {   # $1 json body -> prints compact results
+            id=$(curl -sS -X POST $API -H 'content-type: application/json' -d "$1" | jq -r .id)
+            for i in $(seq 1 30); do r=$(curl -sS $API/$id); [ "$(echo "$r" | jq -r .status)" = finished ] && break; sleep 2; done
+            echo "$r"
+          }
+          LOC='[{"country":"PL","limit":4},{"country":"DE","limit":3},{"country":"NL","limit":3},{"country":"FI","limit":2},{"country":"LT","limit":1},{"country":"GB","limit":2},{"country":"US","limit":2},{"country":"RU","limit":3},{"country":"KZ","limit":1},{"country":"TR","limit":1}]'
+          echo "===== HTTPS GET /"
+          run "{\"type\":\"http\",\"target\":\"milaharys.com\",\"locations\":$LOC,\"measurementOptions\":{\"protocol\":\"HTTPS\",\"request\":{\"method\":\"GET\",\"path\":\"/\"}}}" \
+            | jq -r '.results[] | [.probe.country, .probe.city, (.probe.asn|tostring), .probe.network, .result.status, (.result.statusCode|tostring), (.result.timings.tcp|tostring), (.result.timings.tls|tostring), (.result.timings.total|tostring), ((.result.rawOutput // "")|.[0:90]|gsub("\n";" "))] | @tsv'
+          echo "===== HTTP (port 80) GET /"
+          run "{\"type\":\"http\",\"target\":\"milaharys.com\",\"locations\":$LOC,\"measurementOptions\":{\"protocol\":\"HTTP\",\"request\":{\"method\":\"HEAD\",\"path\":\"/\"}}}" \
+            | jq -r '.results[] | [.probe.country, .probe.city, .probe.network, .result.status, (.result.statusCode|tostring), (.result.timings.tcp|tostring), ((.result.rawOutput // "")|.[0:80]|gsub("\n";" "))] | @tsv'
+          echo "===== PING"
+          run "{\"type\":\"ping\",\"target\":\"141.8.192.31\",\"locations\":$LOC}" \
+            | jq -r '.results[] | [.probe.country, .probe.city, .probe.network, .result.status, (.result.stats.loss|tostring), (.result.stats.avg|tostring)] | @tsv'
+          echo "===== MTR from PL (where the path stops)"
+          run '{"type":"mtr","target":"141.8.192.31","locations":[{"country":"PL","limit":2}],"measurementOptions":{"protocol":"TCP","port":443,"packets":3}}' \
+            | jq -r '.results[] | "--- \(.probe.city) \(.probe.network)", (.result.hops[]? | "\(.resolvedAddress // "*")\t\(.asn // [] | tostring)\tloss=\(.stats.loss)")'
+          echo "===== MTR from US (control)"
+          run '{"type":"mtr","target":"141.8.192.31","locations":[{"country":"US","limit":1}],"measurementOptions":{"protocol":"TCP","port":443,"packets":3}}' \
+            | jq -r '.results[] | "--- \(.probe.city) \(.probe.network)", (.result.hops[]? | "\(.resolvedAddress // "*")\t\(.asn // [] | tostring)\tloss=\(.stats.loss)")'
+          echo "===== another site on the same Sprinthost IP block? (sprinthost.ru itself from PL)"
+          run "{\"type\":\"http\",\"target\":\"sprinthost.ru\",\"locations\":[{\"country\":\"PL\",\"limit\":3},{\"country\":\"DE\",\"limit\":2}],\"measurementOptions\":{\"protocol\":\"HTTPS\",\"request\":{\"method\":\"HEAD\",\"path\":\"/\"}}}" \
+            | jq -r '.results[] | [.probe.country, .probe.network, .result.status, (.result.statusCode|tostring), ((.result.rawOutput // "")|.[0:60]|gsub("\n";" "))] | @tsv'
+          echo "===== whois of the server IP"
+          whois 141.8.192.31 2>/dev/null | grep -iE '^(netname|descr|country|origin|org-name)' | head
