@@ -23,6 +23,15 @@ export function preloadImage(src) {
   });
   cache.set(src, p); return p;
 }
+// a request lost on a lossy link is asked again (with a fresh URL, so no cached failure answers it) before the frame is given up
+export function retrying(img, src, giveUp, tries = 2) {
+  let n = 0;
+  img.onerror = () => {
+    if (n >= tries) { giveUp(); return; }
+    n++; setTimeout(() => { img.src = src + (src.includes('?') ? '&' : '?') + 'r=' + n; }, 700 * n);
+  };
+  img.src = src;
+}
 export function fmtTime(s) { s = Math.max(0, Math.round(s || 0)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
 export function pad3(n) { return String(n).padStart(3, '0'); }
 export function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }

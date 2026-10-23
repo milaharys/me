@@ -1,14 +1,14 @@
-import { createStrip } from './strip.js?v=7020ddca';
-import { createWardrobe } from './wardrobe.js?v=7020ddca';
-import { createViewer } from './viewer.js?v=7020ddca';
-import { onRoute, navigate, back, parse } from './router.js?v=7020ddca';
-import { shuffle, esc } from './media.js?v=7020ddca';
+import { createStrip } from './strip.js?v=d9318d6f';
+import { createWardrobe } from './wardrobe.js?v=d9318d6f';
+import { createViewer } from './viewer.js?v=d9318d6f';
+import { onRoute, navigate, back, parse } from './router.js?v=d9318d6f';
+import { shuffle, esc } from './media.js?v=d9318d6f';
 
 // When embedded elsewhere (Tilda T123), window.MH_BASE points at the hosted folder; everything loads from there.
 const BASE = (window.MH_BASE || new URL('../../', import.meta.url).href).replace(/\/?$/, '/');
 const abs = u => (u && !/^(https?:)?\/\//.test(u) ? BASE + u : u);
-import { MARKUP } from './markup.js?v=7020ddca';
-import { mountCredit } from './credit.js?v=7020ddca';
+import { MARKUP } from './markup.js?v=d9318d6f';
+import { mountCredit } from './credit.js?v=d9318d6f';
 if (!document.getElementById('stage')) document.body.insertAdjacentHTML('beforeend', MARKUP);
 // retried with a timeout: a stalled request on a flaky link would otherwise hang the page for good
 async function loadManifest() {

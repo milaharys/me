@@ -76,9 +76,9 @@ function hashFile(p) {
 async function readJSON(p, fallback) {
   try { return JSON.parse(await readFile(p, 'utf8')); } catch { return fallback; }
 }
-async function writeJSON(p, obj) {
+async function writeJSON(p, obj, compact = false) {   // compact for what the site downloads, indented for what people edit
   await mkdir(dirname(p), { recursive: true });
-  await writeFile(p, JSON.stringify(obj, null, 2) + '\n');
+  await writeFile(p, (compact ? JSON.stringify(obj) : JSON.stringify(obj, null, 2)) + '\n');
 }
 const fmtKB = n => (n / 1024).toFixed(0) + ' KB';
 const fmtMB = n => (n / 1048576).toFixed(2) + ' MB';
@@ -435,6 +435,9 @@ async function stampVersion() {
   html = html.replace(/assets\/style\.css(\?v=[a-z0-9]+)?/g, `assets/style.css?v=${v}`);
   // the entry script too: the host caches .js for a week, and boot.js has no version of its own
   html = html.replace(/assets\/js\/boot\.js(\?v=[a-z0-9]+)?/g, `assets/js/boot.js?v=${v}`);
+  // every module is requested at once with the page, not one level of imports after another: on a far link that chain was a second
+  const preload = ['main.js', ...files.filter(f => f !== 'boot.js' && f !== 'main.js')].map(f => `<link rel="modulepreload" href="assets/js/${f}?v=${v}">`).join('\n');
+  html = html.replace(/<!-- modules:start -->[\s\S]*?<!-- modules:end -->/, `<!-- modules:start -->\n${preload}\n<!-- modules:end -->`);
   // icons keep their names between builds and browsers hold them for weeks: each link carries its own file's hash
   for (const f of ['favicon.ico', 'favicon.png', 'apple-touch-icon.png']) {
     if (!existsSync(join(PUB, f))) continue;
@@ -464,7 +467,7 @@ async function main() {
     if (icon) await buildBrandFromIcon(icon, manifest); else if (seal) await buildBrandFromSeal(seal, site);
     if (manifest) {
       manifest.site = site;
-      await writeJSON(manifestFile, manifest);
+      await writeJSON(manifestFile, manifest, true);
       await injectHtml(site, manifest, new Map(manifest.items.map(i => [i.id, i])));
     }
     const codeV = await stampVersion();
@@ -639,7 +642,7 @@ async function main() {
   }
   const icon = await findIcon(), seal = icon ? null : await findSeal();
   if (icon) await buildBrandFromIcon(icon, manifest); else if (seal) await buildBrandFromSeal(seal, site); else if (frames.length) await buildBranding(frames, site);
-  await writeJSON(join(PUB, 'data', 'manifest.json'), manifest);
+  await writeJSON(join(PUB, 'data', 'manifest.json'), manifest, true);
   await injectHtml(site, manifest, byId);
   const codeV = await stampVersion();
   if (tmpDir) await rm(tmpDir, { recursive: true, force: true });

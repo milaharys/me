@@ -7,7 +7,8 @@
   // the version stamped into the page's own stylesheet link is the fallback when version.txt does not answer in time
   const own = document.querySelector('link[rel="stylesheet"][href*="assets/style.css?v="]');
   let v = own ? new URL(own.href).searchParams.get('v') : '';
-  try { const r = await timed(base + 'data/version.txt', 4000, { cache: 'no-store' }); if (r.ok) v = (await r.text()).trim() || v; } catch {}
+  // our own page is served no-cache, so its stamped version is current; only an embed elsewhere asks version.txt (one round trip saved)
+  if (!v) try { const r = await timed(base + 'data/version.txt', 4000, { cache: 'no-store' }); if (r.ok) v = (await r.text()).trim(); } catch {}
   v ||= Date.now().toString(36);
   window.MH_BASE = base; window.MH_V = v;
   if (!document.querySelector('link[data-mh-css]') && !own) {   // embedded without our page: bring the stylesheet along

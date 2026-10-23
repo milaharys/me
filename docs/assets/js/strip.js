@@ -1,6 +1,6 @@
 // Strip: photos packed into columns that fill the whole viewport, infinite horizontal scroll.
 // One transform per frame on the track; nodes keep static left/top and only hop by loopW when they wrap.
-import { pickTier, preloadImage, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=7020ddca';
+import { pickTier, preloadImage, retrying, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=d9318d6f';
 
 export function createStrip({ items, stage, loop = true, loopIfWide = false, layout = 'scatter', swipeDown = false, maxTier = 'full', onOpen }) {
   let looping = loop;                      // a band loops too once it is wider than the screen
@@ -141,12 +141,11 @@ export function createStrip({ items, stage, loop = true, loopIfWide = false, lay
       let settled = false; const settle = () => { if (!settled) { settled = true; pending--; } };
       pending++;
       img.onload = () => img.decode().catch(() => {}).then(() => { settle(); node.el.classList.add('loaded'); img.classList.add('in'); });
-      img.onerror = () => { settle(); fail(node); };
       let tier = pickTier(item, node.w, node.h);
       if (tier === 'full' && maxTier !== 'full') tier = 'rail';     // the collage never needs 2560px frames
       if (!background && (node.visible || firstScreen)) img.fetchPriority = 'high';
       if (background) img.fetchPriority = 'low';
-      img.src = (tier === 'full' ? item.rail : item[tier]).src; node.el.appendChild(img); node.media = img;
+      retrying(img, (tier === 'full' ? item.rail : item[tier]).src, () => { settle(); fail(node); }); node.el.appendChild(img); node.media = img;
       if (tier === 'full') node.needFull = true;   // the full version follows once the strip is at rest
     } else {
       const v = document.createElement('video');

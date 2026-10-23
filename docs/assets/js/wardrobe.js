@@ -1,5 +1,5 @@
 // Wardrobe: every work, by project, justified rows, lazy HQ loading. With a role picked, only that side of the work.
-import { pickTier, esc, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=7020ddca';
+import { pickTier, esc, retrying, REDUCED, E_OUT, E_IO, T2, T3 } from './media.js?v=d9318d6f';
 
 export function createWardrobe({ el, projects, role = null, onOpen }) {
   const scroll = el.querySelector('.scroll');
@@ -75,8 +75,8 @@ export function createWardrobe({ el, projects, role = null, onOpen }) {
       t.tier = pickTier(item, t.w, t.h);
       const img = new Image(); img.decoding = 'async'; img.alt = ''; img.className = 'media';
       img.onload = () => img.decode().catch(() => {}).then(() => { t.el.classList.add('loaded'); img.classList.add('in'); });   // shown only once decoded: no blank first frames
-      img.onerror = () => { console.warn('tile failed:', item.id); t.el.remove(); tiles.delete(item.id); item.projectObj.itemObjs = item.projectObj.itemObjs.filter(i => i !== item); layout(true); };
-      img.src = item[t.tier].src; t.el.prepend(img);
+      retrying(img, item[t.tier].src, () => { console.warn('tile failed:', item.id); t.el.remove(); tiles.delete(item.id); item.projectObj.itemObjs = item.projectObj.itemObjs.filter(i => i !== item); layout(true); });
+      t.el.prepend(img);
     } else {
       const v = document.createElement('video');
       v.muted = true; v.playsInline = true; v.loop = true; v.preload = 'none'; v.className = 'media';
