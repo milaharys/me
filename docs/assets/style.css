@@ -162,6 +162,7 @@ body.viewer-open .nav a{pointer-events:none}   /* the links keep their own point
 .credit-text{display:inline-flex;transition:color var(--t-2) var(--e-out)}
 .credit-text i{font-style:normal;display:inline-block;will-change:transform}
 .credit-mark{height:8px;width:auto;flex:none;color:var(--muted);transition:color var(--t-2) var(--e-out)}   /* grey like the words: in black the stacked mark reads as a blot */
+.credit-link{display:inline-flex;align-items:center;padding:10px 8px;margin:-10px -8px;cursor:pointer}   /* a finger-sized target around the small mark */
 @media (hover:hover){ .credit:hover .credit-text,.credit:hover .credit-mark{color:var(--ink)} }
 .credit-head{padding:0 0 30px}
 @media (max-width:899px){ .credit-head{padding:0 0 22px} }
