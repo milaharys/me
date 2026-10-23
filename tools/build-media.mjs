@@ -384,25 +384,32 @@ const tidy = s => (s && /^TODO/i.test(s)) ? s.replace(/^TODO:?\s*/i, '') : (s ||
 async function injectHtml(site, manifest, byId) {
   const file = join(PUB, 'index.html');
   let html = await readFile(file, 'utf8');
-  // link previews and the tab carry the roles only; the name stays as the fallback when no role is set
-  const name = site.name || 'mila harys', role = tidy(site.role), title = role || name, desc = tidy(site.description) || title;
+  // the tab carries the roles only (the name is the fallback when no role is set); a link preview is a card: the name as
+  // its title, the roles as its line under it, the domain above it comes from the messenger itself
+  const name = site.name || 'mila harys', role = tidy(site.role), title = role || name, desc = tidy(site.description) || role || name;
   const base = tidy(site.url).replace(/\/$/, '');
+  const locale = { en: 'en_US', ru: 'ru_RU', pl: 'pl_PL', de: 'de_DE', fr: 'fr_FR' }[String(site.lang || 'en').toLowerCase()] || 'en_US';
   // the image URL carries its own hash: Telegram, WhatsApp and the rest cache previews by URL and would keep an old picture
   const ogFile = join(PUB, 'og.jpg'), ogV = existsSync(ogFile) ? createHash('sha1').update(await readFile(ogFile)).digest('hex').slice(0, 8) : '';
   const og = (base ? `${base}/og.jpg` : 'og.jpg') + (ogV ? `?v=${ogV}` : '');
+  const alt = `${name} — ${role || 'portfolio'}`;
   const meta = `<title>${escHtml(title)}</title>
 <meta name="description" content="${escHtml(desc)}">
-<meta name="theme-color" content="#FFFFFF">
+<meta name="theme-color" content="#FFFFFF">${base ? `\n<link rel="canonical" href="${escHtml(base)}/">` : ''}
 <meta property="og:type" content="website">
-<meta property="og:title" content="${escHtml(title)}">
-<meta property="og:description" content="${escHtml(desc)}">
-<meta property="og:image" content="${escHtml(og)}">
+<meta property="og:locale" content="${locale}">
+<meta property="og:title" content="${escHtml(name)}">
+<meta property="og:description" content="${escHtml(desc)}">${base ? `\n<meta property="og:url" content="${escHtml(base)}/">` : ''}
+<meta property="og:image" content="${escHtml(og)}">${og.startsWith('https://') ? `\n<meta property="og:image:secure_url" content="${escHtml(og)}">` : ''}
+<meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">${base ? `\n<meta property="og:url" content="${escHtml(base)}/">` : ''}
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="${escHtml(alt)}">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="${escHtml(title)}">
+<meta name="twitter:title" content="${escHtml(name)}">
 <meta name="twitter:description" content="${escHtml(desc)}">
-<meta name="twitter:image" content="${escHtml(og)}">`;
+<meta name="twitter:image" content="${escHtml(og)}">
+<meta name="twitter:image:alt" content="${escHtml(alt)}">`;
   const list = manifest.projects.map(p => {
     const items = p.items.map(id => byId.get(id)).filter(i => i && i.onRail).map(i => `<li><img src="${escHtml(i.type === 'photo' ? i.rail.src : i.poster.rail)}" width="${i.rail.w}" height="${i.rail.h}" alt="${escHtml(p.title)}" loading="lazy"></li>`).join('');
     return `<li><h2>${escHtml(p.title)} — ${escHtml(p.categoryLabel)}</h2><ul>${items}</ul></li>`;

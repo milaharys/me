@@ -65,7 +65,7 @@ media-src/<категория>/<съёмка>/<файлы>
 
 | Хочу | Где |
 |---|---|
-| Текст превью ссылок / заголовок вкладки | `content/site.json` → `role` → `npm run media` (или руками 6 мест в `docs/index.html` между meta-комментариями) |
+| Текст превью ссылок / заголовок вкладки | `content/site.json` → `name` (заголовок карточки), `role` (строка под ним и заголовок вкладки) → `npm run media` (или руками все `og:` / `twitter:` теги в `docs/index.html` между meta-комментариями) |
 | Почта, instagram, telegram | `content/site.json` → `npm run media` (или `site` в `docs/data/manifest.json`) |
 | Название / год / кредиты / ссылка съёмки | `content/meta.json` → `npm run media` (или та же съёмка в `docs/data/manifest.json` → `projects`) |
 | Цвета, шрифт, размеры, отступы | `docs/assets/style.css` |
