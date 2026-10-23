@@ -1,0 +1,39 @@
+name: probe
+on: [push]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          set +e
+          UA='TelegramBot (like TwitterBot)'
+          echo "===== 30 x HTTPS GET / with a 6s budget (telegram UA), from the runner"
+          ok=0; bad=0
+          for i in $(seq 1 30); do
+            r=$(curl -sS -o /dev/null -w '%{http_code} connect=%{time_connect} tls=%{time_appconnect} total=%{time_total}' --max-time 6 -A "$UA" https://milaharys.com/ 2>&1)
+            case "$r" in 200*) ok=$((ok+1));; *) bad=$((bad+1)); echo "FAIL #$i: $r";; esac
+          done
+          echo "ok=$ok bad=$bad"
+          echo "===== TLS chain"
+          echo | openssl s_client -connect milaharys.com:443 -servername milaharys.com 2>/dev/null | grep -E 'Verify return|depth=|subject=|issuer=|Protocol|Cipher' | head -20
+          echo "===== headers with a few bot UAs"
+          for ua in 'TelegramBot (like TwitterBot)' 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)' 'WhatsApp/2.23.20.0' 'Twitterbot/1.0' 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15'; do
+            echo "-- $ua"; curl -sS -D - -o /tmp/b --max-time 15 -A "$ua" https://milaharys.com/ | grep -iE '^HTTP|^content-|^cache|^vary|^location'; grep -oE '<title>[^<]*|og:image" content="[^"]*' /tmp/b | head -3
+          done
+          echo "===== og.jpg"; curl -sS -I --max-time 15 -A "$UA" 'https://milaharys.com/og.jpg?v=93908195' | grep -iE '^HTTP|length|type|cache'
+          echo "===== third-party preview parsers"
+          curl -sS --max-time 40 'https://api.microlink.io/?url=https%3A%2F%2Fmilaharys.com%2F' | head -c 1500; echo
+          curl -sS --max-time 40 'https://api.peekalink.io/' -o /dev/null -w 'peekalink %{http_code}\n'
+          echo "===== globalping: HTTPS GET / from NL/DE/PL/GB/US/FI"
+          API=https://api.globalping.io/v1/measurements
+          run() { id=$(curl -sS -X POST $API -H 'content-type: application/json' -d "$1" | jq -r .id); for i in $(seq 1 40); do r=$(curl -sS $API/$id); [ "$(echo "$r" | jq -r .status)" = finished ] && break; sleep 2; done; echo "$r"; }
+          LOC='[{"country":"NL","limit":10},{"country":"DE","limit":5},{"country":"PL","limit":5},{"country":"GB","limit":3},{"country":"US","limit":4},{"country":"FI","limit":2},{"country":"FR","limit":2}]'
+          for pass in 1 2; do
+            echo "-- pass $pass"
+            run "{\"type\":\"http\",\"target\":\"milaharys.com\",\"locations\":$LOC,\"measurementOptions\":{\"protocol\":\"HTTPS\",\"request\":{\"method\":\"GET\",\"path\":\"/\",\"headers\":{\"User-Agent\":\"TelegramBot (like TwitterBot)\"}}}}" \
+              | jq -r '.results[] | [.probe.country, .probe.city, .probe.network, .result.status, (.result.statusCode|tostring), (.result.timings.tcp|tostring), (.result.timings.tls|tostring), (.result.timings.total|tostring), ((.result.rawOutput // "")|.[0:60]|gsub("\n";" "))] | @tsv'
+          done
+          echo "-- og.jpg from NL"
+          run '{"type":"http","target":"milaharys.com","locations":[{"country":"NL","limit":6}],"measurementOptions":{"protocol":"HTTPS","request":{"method":"HEAD","path":"/og.jpg","query":"v=93908195"}}}' \
+            | jq -r '.results[] | [.probe.country, .probe.city, .probe.network, .result.status, (.result.statusCode|tostring), (.result.timings.total|tostring), ((.result.rawOutput // "")|.[0:60]|gsub("\n";" "))] | @tsv'
+          echo "===== version live"; curl -sS --max-time 15 https://milaharys.com/data/version.txt
