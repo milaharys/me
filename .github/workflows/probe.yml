@@ -6,22 +6,8 @@ jobs:
     steps:
       - run: |
           set +e
-          UA='TelegramBot (like TwitterBot)'
-          echo "===== live version"; curl -sS --max-time 15 https://milaharys.com/data/version.txt
-          echo "===== live meta (telegram UA)"; curl -sS --max-time 15 -A "$UA" https://milaharys.com/ | grep -E 'og:|twitter:|<title>' 
-          echo "===== cert chain as served"
-          echo | openssl s_client -connect milaharys.com:443 -servername milaharys.com -showcerts 2>/dev/null | grep -E '^ ?[0-9] s:|^ +i:|^ +a:|^ +v:'
-          echo | openssl s_client -connect milaharys.com:443 -servername milaharys.com -showcerts 2>/dev/null | awk '/BEGIN CERT/{n++} {print > ("/tmp/c" n ".pem")}'
-          for f in /tmp/c[1-9].pem; do openssl x509 -in $f -noout -subject -issuer -dates 2>/dev/null; echo; done
-          echo "===== verify with ISRG Root X1 ONLY (an older trust store)"
-          curl -sS -o /tmp/x1.pem https://letsencrypt.org/certs/isrgrootx1.pem
-          cat /tmp/c[2-9].pem > /tmp/untrusted.pem 2>/dev/null
-          openssl verify -no-CApath -no-CAstore -CAfile /tmp/x1.pem -untrusted /tmp/untrusted.pem /tmp/c1.pem
-          curl -sS -o /dev/null -w 'curl with X1 only: %{http_code} ssl_verify=%{ssl_verify_result}\n' --cacert /tmp/x1.pem --capath /dev/null --max-time 15 https://milaharys.com/
-          echo "===== compare: sprinthost.ru chain"
-          echo | openssl s_client -connect sprinthost.ru:443 -servername sprinthost.ru -showcerts 2>/dev/null | grep -E '^ ?[0-9] s:|^ +i:'
-          echo "===== system trust store has new LE roots?"; ls /etc/ssl/certs | grep -i isrg
-          echo "===== HTTP/1.1 only, no compression, HEAD and GET"
-          curl -sS --http1.1 -I --max-time 15 -A "$UA" https://milaharys.com/ | head -12
-          curl -sS --http1.1 --max-time 15 -A "$UA" -H 'Range: bytes=0-65535' -o /dev/null -w 'range GET: %{http_code} %{size_download}\n' https://milaharys.com/
-          echo "===== og.jpg"; curl -sS -I --max-time 15 -A "$UA" "$(curl -sS --max-time 15 https://milaharys.com/ | grep -oE 'og:image" content="[^"]*' | head -1 | cut -d'"' -f3)" | head -8
+          for u in https://milaharys.github.io/me/ https://milaharys.github.io/; do
+            echo "== $u"; curl -sS -L --max-time 15 -D /tmp/h -o /tmp/b "$u"; grep -iE '^HTTP|^location|^server' /tmp/h; grep -oE '<title>[^<]*|og:title" content="[^"]*|og:image" content="[^"]*' /tmp/b
+          done
+          echo "== version on pages"; curl -sS --max-time 15 https://milaharys.github.io/me/data/version.txt
+          echo "== CNAME on pages?"; curl -sS --max-time 15 -o /dev/null -w '%{http_code}\n' https://milaharys.github.io/me/CNAME
