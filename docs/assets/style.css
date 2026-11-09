@@ -158,11 +158,11 @@ body.viewer-open .nav a{pointer-events:none}   /* the links keep their own point
 .mh-fail{position:fixed;inset:auto 0 50% 0;z-index:100;margin:0;text-align:center;color:var(--ink)}
 .mh-fail a{text-decoration:underline}
 /* credit: "powered by" + the XTC mark, at the top of the gallery and the archive; the letters wave on hover */
-.credit{display:flex;align-items:center;justify-content:center;gap:5px;font-size:9px;line-height:12px;letter-spacing:.02em;color:var(--muted);user-select:none;-webkit-user-select:none}
+.credit{display:flex;align-items:center;justify-content:center;font-size:9px;line-height:12px;letter-spacing:.02em;color:var(--muted);user-select:none;-webkit-user-select:none}
 .credit-text{display:inline-flex;transition:color var(--t-2) var(--e-out)}
 .credit-text i{font-style:normal;display:inline-block;will-change:transform}
 .credit-mark{height:8px;width:auto;flex:none;color:var(--muted);transition:color var(--t-2) var(--e-out)}   /* grey like the words: in black the stacked mark reads as a blot */
-.credit-link{display:inline-flex;align-items:center;padding:10px 8px;margin:-10px -8px;cursor:pointer}   /* a finger-sized target around the small mark */
+.credit-link{display:inline-flex;align-items:center;gap:5px;padding:10px 8px;margin:-10px -8px;cursor:pointer}   /* words and mark are one link, with a finger-sized target around them */
 @media (hover:hover){ .credit:hover .credit-text,.credit:hover .credit-mark{color:var(--ink)} }
 .credit-head{padding:0 0 30px}
 @media (max-width:899px){ .credit-head{padding:0 0 22px} }
